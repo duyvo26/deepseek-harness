@@ -28,9 +28,10 @@ type WorkspaceViewState = {
   sessionOrderByAccount: Record<string, string[]>
   /** Archived-row visibility; omitted in pre-filter v5 snapshots and read as 'default'. */
   /**
-   * Archived filter, kept for the persisted view record only.
-   * @deprecated Archived Sessions are managed in Settings, so the sidebar always
-   *   lists the ones a user can open.
+   * Archived filter carried by the persisted view record.
+   *
+   * Archived Sessions are managed in Settings, so every sidebar surface reads
+   * this as its default and no control writes another value.
    */
   archivedFilter?: ArchivedFilter
 }

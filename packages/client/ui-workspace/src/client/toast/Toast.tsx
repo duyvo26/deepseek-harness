@@ -19,12 +19,11 @@ export function ToastEntry<P extends PropsRuntime<'workspace.toast'>>(props: Toa
  * @returns The shared Toast occurrence with its current actions.
  */
 export function ArchiveToastEntry(props: ArchiveToastEntryProps) {
-  const { dismissToast, display, filterAction, useStore, t, renderFactorySlot, seq } = props
-  const archivedVisible = useStore(state => (state.archivedFilter ?? 'default') !== 'default')
+  const { dismissToast, display, t, renderFactorySlot, seq } = props
   const fields = display(props, t, dismissToast)
   return renderFactorySlot('workspace.toast.content', {
     ...fields,
-    actions: [...fields.actions ?? [], ...archivedVisible ? [] : [filterAction(t, dismissToast)]],
+    actions: fields.actions ?? [],
     seq,
     onDone: dismissToast,
   })

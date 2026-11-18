@@ -662,8 +662,6 @@ describe('ui-workspace apply', () => {
     expect(view.getSnapshot().archivedFilter).toBe('default')
     const archived = b.slots.entries('workspace.toast').find(row => row.options.key === 'archived')!
     const archiveDisplay = faceOf(archived) as ArchiveToastInjected
-    archiveDisplay.filterAction(b.locale.bind('workspace'), toast.dismissToast).onClick()
-    expect(view.getSnapshot().archivedFilter).toBe('show')
 
     archiveDisplay.display({ kind: 'archived', sessionId: sid('one'), seq: 1 }, b.locale.bind('workspace'), toast.dismissToast).actions![0]!.onClick()
     expect(unarchiveSession).toHaveBeenCalledWith('one')

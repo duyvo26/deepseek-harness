@@ -29,10 +29,8 @@ export type ToastEntryProps<P extends PropsRuntime<'workspace.toast'>> =
   P & PropsLocale<'workspace'> & PropsRenderFactories & InjectFace<{
     display: (notice: P, t: PropsLocale<'workspace'>['t'], dismiss: () => void) => ToastDisplay
   }>
-/** Archive adapters additionally read the existing viewing store. */
-export interface ArchiveToastInjected extends ToastDisplayInjected<'archived' | 'stoppedAndArchived'> {
-  filterAction: (t: PropsLocale<'workspace'>['t'], dismiss: () => void) => NonNullable<ToastDisplay['actions']>[number]
-}
+/** Archive adapters inject no extra action: archived Sessions live in Settings. */
+export type ArchiveToastInjected = ToastDisplayInjected<'archived' | 'stoppedAndArchived'>
 /** Archive adapter props with its injected action and viewing-state seats. */
 export type ArchiveToastEntryProps =
   PropsRuntime<'workspace.toast', 'archived' | 'stoppedAndArchived'> & PropsLocale<'workspace'> & PropsRenderFactories
