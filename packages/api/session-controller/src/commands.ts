@@ -259,6 +259,10 @@ export class SessionCommandController {
     // list read, which reads as "archived into nowhere" rather than deleted.
     await persistence.delete(request.sessionId)
     await this.ctx.workspaceRegistry.detachSession(request.sessionId)
+    // Announce the removal the way a disposal does: a browser that never hears
+    // it keeps the row, because the list is rebuilt from frames rather than
+    // re-read for every client action.
+    this.ctx.emit('api-session/removed', request.sessionId)
     return { deleted: true }
   }
 

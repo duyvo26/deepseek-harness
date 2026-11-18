@@ -62,6 +62,8 @@ describe('deleteSession', () => {
   it('removes the artifact before detaching, so no list read sees it ungrouped', async () => {
     const ctx = await baseContext()
     const order: string[] = []
+    const removed: string[] = []
+    ctx.on('api-session/removed', (id) => { removed.push(id) })
     const persistence = {
       stat: async () => ({ header: { id: 'session-order' }, revision: 'test' }),
       delete: async () => { order.push('artifact') },
@@ -79,6 +81,8 @@ describe('deleteSession', () => {
     // A Session that left its Workspace while its log still existed would show
     // in the ungrouped bucket for the next read.
     expect(order).toEqual(['artifact', 'detach'])
+    // A browser that never hears the removal keeps the row.
+    expect(removed).toEqual(['session-order'])
     await ctx.fiber.dispose()
   })
 
