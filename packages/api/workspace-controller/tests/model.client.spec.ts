@@ -103,9 +103,17 @@ class FakeWorkspaceRemote implements WorkspaceRemote {
   ) => Promise<RemoteResult<WorkspacePinValue>> = () =>
     Promise.resolve(remoteOk({ pinnedSessionIds: [] }))
 
+  onEnsureGlobal: () => Promise<RemoteResult<WorkspaceValue>> = () =>
+    Promise.resolve(remoteOk({ workspace: workspace('global') }))
+
   create(request: WorkspaceCreateRequest): Promise<RemoteResult<WorkspaceCreateValue>> {
     this.record('create', request)
     return this.onCreate(request)
+  }
+
+  ensureGlobal(): Promise<RemoteResult<WorkspaceValue>> {
+    this.record('ensureGlobal', undefined)
+    return this.onEnsureGlobal()
   }
 
   rename(request: WorkspaceRenameRequest): Promise<RemoteResult<WorkspaceValue>> {

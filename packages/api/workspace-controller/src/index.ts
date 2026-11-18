@@ -112,6 +112,21 @@ export class WorkspaceController extends TypertRemoteService {
   }
 
   /**
+   * Register the shared project-less chat Workspace, creating its directory.
+   *
+   * The Host resolves both the harness home and the directory name, so the
+   * caller names nothing: a browser cannot know the Host's DSH home, and a
+   * caller-chosen path would be a guess the Host has to reject. First use
+   * creates the directory; later calls reuse the registered row.
+   * @returns the shared Workspace projection.
+   */
+  @Remote('ensureGlobal')
+  async ensureGlobal(): Promise<WorkspaceValue> {
+    const workspace = await this.ctx.workspaceRegistry.ensureGlobal()
+    return { workspace: workspaceView(workspace) }
+  }
+
+  /**
    * Rename one Workspace to a unique non-blank title.
    * @param request - Workspace identity and proposed title.
    * @returns the updated Workspace projection.

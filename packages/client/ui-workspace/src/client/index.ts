@@ -68,7 +68,7 @@ import {
 import {
   createWorkspaceColorStore, WORKSPACE_COLOR_KEYS,
 } from './workspace-colors.ts'
-import { ensureScratchWorkspace, isScratchWorkspace } from './scratch-workspace.ts'
+import { ensureScratchWorkspace, isScratchWorkspace, isScratchWorkspacePath } from './scratch-workspace.ts'
 import { en, ja, es, fr, de, ru, pt, zh, type WorkspaceKey } from './locales.ts'
 
 export type { StartSessionOptions, UiWorkspace } from './navigation.ts'
@@ -211,11 +211,15 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   // home, so the Global project is present in the sidebar before any chat needs
   // it. A failure is silent: the row is created on first use anyway, and a
   // startup notice for a convenience row would be noise.
+  // Register the shared project-less Workspace once the Host reports ready, so
+  // the Global project is present before any chat needs it. A failure is
+  // silent: the row is created on first use anyway, and a startup notice for a
+  // convenience row would be noise.
   ctx.effect(() => {
     const ensure = (): void => {
       if (hostInfo.getSnapshot().home === undefined) return
       const title = ctx.locale.bind(NS)('scratch.title')
-      void ensureScratchWorkspace(workspaces, hostInfo.getSnapshot().home, title).catch((reason: unknown) => {
+      void ensureScratchWorkspace(workspaces, title).catch((reason: unknown) => {
         console.warn('global workspace unavailable:', reason)
       })
     }
@@ -348,7 +352,10 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   })
   const isScratchWorkspaceById = (workspaceId: WorkspaceId): boolean => {
     const row = workspaces.list.getSnapshot().items.find(item => item.workspaceId === workspaceId)
-    return row !== undefined && isScratchWorkspace(row, hostInfo.getSnapshot().home)
+    // Path-shaped recognition keeps the refusal working before host facts name
+    // the home; the home-based test only refines an already-recognised row.
+    return row !== undefined
+      && (isScratchWorkspacePath(row) || isScratchWorkspace(row, hostInfo.getSnapshot().home))
   }
   const workspaceActionRequest = createSnapshotStore<WorkspaceActionRequest | null>(null)
   const requestWorkspaceAction = (workspaceId: WorkspaceId, displayTitle: string, action: 'rename' | 'delete'): void => {

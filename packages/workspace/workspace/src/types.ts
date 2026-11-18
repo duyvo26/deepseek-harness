@@ -9,6 +9,9 @@ import type { Branded } from '@deepseek-ai/dsh-brand'
 import type { SessionHeader, SessionId } from '@deepseek-ai/dsh-session/types'
 import type { TypertResource } from '@deepseek-ai/dsh-typert-protocol'
 
+/** Directory under the harness home holding every project-less chat's workspace. */
+export const GLOBAL_WORKSPACE_DIRECTORY = 'scratch'
+
 /**
  * Identifies one workspace record. A generated uuid, never the path: path
  * normalization rewrites paths, and a reference anchor must stay stable.

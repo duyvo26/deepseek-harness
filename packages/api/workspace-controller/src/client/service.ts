@@ -48,11 +48,18 @@ export interface IWorkspaces {
   /** Host-authoritative Workspace rows, order, archive set, and follow lifecycle. */
   readonly list: WorkspaceSource
   /**
-   * Register an existing path as a Workspace.
-   * @param input - Host create payload.
+   * Register a path as a Workspace.
+   * @param input - Host create payload; `createIfMissing` asks the Host to
+   *   create the directory recursively before registering it.
    * @returns the created or idempotently resolved Workspace.
    */
-  create(input: { path: string }): Promise<WorkspaceView>
+  create(input: { path: string; createIfMissing?: boolean }): Promise<WorkspaceView>
+  /**
+   * Register the shared project-less chat Workspace, creating its directory.
+   * @returns the shared Workspace projection.
+   */
+  ensureGlobal(): Promise<WorkspaceView>
+
   /**
    * Initialize or reuse the default Workspace.
    * @param signal - caller lifetime.
@@ -127,8 +134,14 @@ export class WorkspaceController extends Service implements IWorkspaces {
     this.list = model
   }
 
-  async create(input: { path: string }): Promise<WorkspaceView> {
+  async create(input: { path: string; createIfMissing?: boolean }): Promise<WorkspaceView> {
     const result = await this.model.create(input)
+    if (!result.ok) throw new WorkspaceCreateError(result.error)
+    return result.value.workspace
+  }
+
+  async ensureGlobal(): Promise<WorkspaceView> {
+    const result = await this.model.ensureGlobal()
     if (!result.ok) throw new WorkspaceCreateError(result.error)
     return result.value.workspace
   }

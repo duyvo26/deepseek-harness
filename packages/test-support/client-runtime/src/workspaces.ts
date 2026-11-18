@@ -68,7 +68,7 @@ export class TestWorkspaces implements IWorkspaces {
    * @param input - the Host create payload.
    * @returns the created Workspace view.
    */
-  async create(input: { path: string }): Promise<WorkspaceView> {
+  async create(input: { path: string; createIfMissing?: boolean }): Promise<WorkspaceView> {
     this.calls.push({ method: 'create', args: [input] })
     const stub = this.stubs.get('create')
     if (stub !== undefined) return await (stub(input) as Promise<WorkspaceView>)
@@ -76,6 +76,22 @@ export class TestWorkspaces implements IWorkspaces {
       workspaceId: `ws-${input.path}` as WorkspaceId,
       title: input.path,
       path: input.path,
+      sessionIds: [],
+    } as unknown as WorkspaceView
+  }
+
+  /**
+   * Register the shared project-less Workspace through a test stub.
+   * @returns the shared Workspace view; unstubbed, a row keyed on the shared path.
+   */
+  async ensureGlobal(): Promise<WorkspaceView> {
+    this.calls.push({ method: 'ensureGlobal', args: [] })
+    const stub = this.stubs.get('ensureGlobal')
+    if (stub !== undefined) return await (stub() as Promise<WorkspaceView>)
+    return {
+      workspaceId: 'ws-global' as WorkspaceId,
+      title: 'scratch',
+      path: '/tmp/.dsh/scratch',
       sessionIds: [],
     } as unknown as WorkspaceView
   }

@@ -7,7 +7,9 @@
 
 import { randomUUID } from 'node:crypto'
 import { brandString } from '@deepseek-ai/dsh-brand'
+import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import { mkdir, stat } from 'node:fs/promises'
+import { join } from 'node:path'
 import { Context, Service } from '@deepseek-ai/cordis'
 import type { SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
@@ -19,6 +21,7 @@ export { WorkspaceMoveInvalidError } from './entity.ts'
 import { defaultWorkspaceTitle, fullyQualifiedWorkspacePath, realpathNormalize } from './paths.ts'
 import { workspaceDomainSpec } from './spec.ts'
 import type { WorkspaceDomainState, WorkspaceRecord } from './spec.ts'
+import { GLOBAL_WORKSPACE_DIRECTORY } from './types.ts'
 import type { SessionActivity, Workspace, WorkspaceId as WorkspaceIdBrand } from './types.ts'
 
 export type {
@@ -251,8 +254,10 @@ export class WorkspaceRegistry extends Service {
    * return the existing entity without changing its title.
    * A newly created workspace is prepended to the durable registry order.
    * Different canonical paths may share a display title.
-   * @param path - Existing directory to own, in a fully qualified path spelling.
+   * @param path - Directory to own, in a fully qualified path spelling.
    * @param title - Display title used only when a new record is created.
+   * @param options - `createIfMissing` creates the directory recursively first,
+   *   for a caller registering a directory it owns and the user never picked.
    * @returns the existing or newly durable workspace.
    */
   // TODO: `title` lost its last production caller when the gateway's
@@ -260,7 +265,13 @@ export class WorkspaceRegistry extends Service {
   // (.agents/notes/archived/simplification/2026-07-31-one-route-to-add-a-workspace.md);
   // drop the parameter with its @param clause and the `create(path, title?)`
   // lines in this package's README pair.
-  async create(path: string, title?: string): Promise<Workspace> {
+  async create(path: string, title?: string, options: { readonly createIfMissing?: boolean } = {}): Promise<Workspace> {
+    // A caller may own the directory's creation (initialization does it here);
+    // one that does not is registering a directory the user already chose.
+    if (options.createIfMissing === true) {
+      if (!fullyQualifiedWorkspacePath(path)) throw new TypeError(`Workspace path is not fully qualified: '${path}'`)
+      await mkdir(path, { recursive: true })
+    }
     const canonical = await realpathNormalize(path)
     if (!(await stat(canonical)).isDirectory()) {
       throw new Error(`cannot create a workspace at '${canonical}': path is not a directory`)
@@ -269,8 +280,22 @@ export class WorkspaceRegistry extends Service {
   }
 
   /**
+   * Register the shared project-less chat Workspace under the harness home.
+   *
+   * Both the home and the directory name are the Host's own: a browser cannot
+   * know `$DSH_HOME`, so it names no path and this resolves one. The directory
+   * is created on first use, which is why creation lives here beside the
+   * registry that requires the directory to exist.
+   * @returns the registered Workspace.
+   */
+  async ensureGlobal(): Promise<Workspace> {
+    const path = join(resolveDshHome(), GLOBAL_WORKSPACE_DIRECTORY)
+    return await this.create(path, undefined, { createIfMissing: true })
+  }
+
+  /**
    * Initialize the default Workspace only while both the registry and Session
-   * history are empty. Repeated requests reuse its durable identity; deleting
+   * history is empty. Repeated requests reuse its durable identity; deleting
    * that registration permanently disables automatic creation.
    * @param resolveDirectory - resolve the absolute directory; called only for
    * eligible creation, inside the registry mutation queue. Missing directories

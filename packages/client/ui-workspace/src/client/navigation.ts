@@ -390,16 +390,11 @@ class UiWorkspaceService extends Service implements UiWorkspace {
   }
 
   async startProjectlessSession(options: StartSessionOptions = {}): Promise<void> {
-    const hostHome = this.ctx.get('remote')?.$host.home
+    // The Host owns the directory: it alone knows `$DSH_HOME`, and the page
+    // cannot name a path the Host would accept.
     const scratch = await ensureScratchWorkspace(
-      this.workspaces, hostHome, this.ctx.locale.bind('workspace')('scratch.title'),
+      this.workspaces, this.ctx.locale.bind('workspace')('scratch.title'),
     )
-    if (scratch === undefined) {
-      // Host facts have not arrived yet, so the directory this page would use
-      // is still unknown; refusing beats guessing a path that does not exist.
-      this.notify({ kind: 'createFailed', message: this.ctx.locale.bind('workspace')('scratch.unavailable') })
-      return
-    }
     this.startSession(scratch.workspaceId, options)
   }
 

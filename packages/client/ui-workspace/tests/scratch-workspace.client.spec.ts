@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import type { IWorkspaces, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import {
-  SCRATCH_WORKSPACE_DIRECTORY, ensureScratchWorkspace, isScratchWorkspace, scratchWorkspacePath,
+  SCRATCH_WORKSPACE_DIRECTORY, ensureScratchWorkspace, isScratchWorkspace, isScratchWorkspacePath,
+  scratchWorkspacePath,
 } from '../src/client/scratch-workspace.ts'
 
 /** Localized name a caller supplies; the module owns no display copy. */
@@ -24,16 +25,19 @@ function view(overrides: Partial<WorkspaceView> = {}): WorkspaceView {
 }
 
 /** A Workspace Controller double recording the calls the helper makes. */
-function workspacesDouble(created: WorkspaceView): {
+function workspacesDouble(created: WorkspaceView, ensureFailure?: unknown): {
   workspaces: IWorkspaces
-  create: ReturnType<typeof vi.fn>
+  ensureGlobal: ReturnType<typeof vi.fn>
   rename: ReturnType<typeof vi.fn>
 } {
-  const create = vi.fn(async () => created)
+  const ensureGlobal = vi.fn(async () => {
+    if (ensureFailure !== undefined) throw ensureFailure
+    return created
+  })
   const rename = vi.fn(async (_id: WorkspaceId, title: string) => ({ ...created, title }))
   return {
-    workspaces: { create, rename } as unknown as IWorkspaces,
-    create,
+    workspaces: { ensureGlobal, rename } as unknown as IWorkspaces,
+    ensureGlobal,
     rename,
   }
 }
@@ -54,30 +58,30 @@ describe('scratchWorkspacePath', () => {
 })
 
 describe('ensureScratchWorkspace', () => {
-  it('registers the directory on first use', async () => {
-    const double = workspacesDouble(view({ title: 'scratch' }))
-    const result = await ensureScratchWorkspace(double.workspaces, HOME, GLOBAL_TITLE)
-    expect(double.create).toHaveBeenCalledWith({ path: `${HOME}/.dsh/scratch` })
-    expect(result?.title).toBe(GLOBAL_TITLE)
+  it('asks the Host to register and create the shared directory', async () => {
+    const double = workspacesDouble(view({ title: SCRATCH_WORKSPACE_DIRECTORY }))
+    const result = await ensureScratchWorkspace(double.workspaces, GLOBAL_TITLE)
+    // No path crosses the wire: the Host alone knows the harness home.
+    expect(double.ensureGlobal).toHaveBeenCalledWith()
+    expect(result.title).toBe(GLOBAL_TITLE)
   })
 
   it('names the row Global while it still carries the derived directory name', async () => {
     const double = workspacesDouble(view({ title: SCRATCH_WORKSPACE_DIRECTORY }))
-    await ensureScratchWorkspace(double.workspaces, HOME, GLOBAL_TITLE)
+    await ensureScratchWorkspace(double.workspaces, GLOBAL_TITLE)
     expect(double.rename).toHaveBeenCalledWith('w-global', GLOBAL_TITLE)
   })
 
   it('leaves a user-chosen title alone on later chats', async () => {
     const double = workspacesDouble(view({ title: 'My notes' }))
-    const result = await ensureScratchWorkspace(double.workspaces, HOME, GLOBAL_TITLE)
+    const result = await ensureScratchWorkspace(double.workspaces, GLOBAL_TITLE)
     expect(double.rename).not.toHaveBeenCalled()
-    expect(result?.title).toBe('My notes')
+    expect(result.title).toBe('My notes')
   })
 
-  it('does not register anything before host facts arrive', async () => {
-    const double = workspacesDouble(view())
-    expect(await ensureScratchWorkspace(double.workspaces, undefined, GLOBAL_TITLE)).toBeUndefined()
-    expect(double.create).not.toHaveBeenCalled()
+  it('surfaces a refused registration instead of reporting a Workspace', async () => {
+    const double = workspacesDouble(view(), new Error('workspace create failed'))
+    await expect(ensureScratchWorkspace(double.workspaces, GLOBAL_TITLE)).rejects.toThrow('workspace create failed')
   })
 })
 
@@ -100,5 +104,20 @@ describe('isScratchWorkspace', () => {
 
   it('matches nothing while the host home is unknown', () => {
     expect(isScratchWorkspace(view(), undefined)).toBe(false)
+  })
+})
+
+describe('isScratchWorkspacePath', () => {
+  it('recognises the shared directory without host facts', () => {
+    // The delete refusal must work before the ready frame names the home.
+    expect(isScratchWorkspacePath(view())).toBe(true)
+  })
+
+  it('does not match an ordinary project', () => {
+    expect(isScratchWorkspacePath(view({ path: '/projects/app' }))).toBe(false)
+  })
+
+  it('does not match a directory that merely contains the name', () => {
+    expect(isScratchWorkspacePath(view({ path: '/elsewhere/scratch' }))).toBe(false)
   })
 })

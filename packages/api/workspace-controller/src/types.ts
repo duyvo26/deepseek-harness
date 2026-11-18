@@ -64,6 +64,12 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
 /** Existing directory requested for Workspace adoption. */
 export interface WorkspaceCreateRequest {
   readonly path: string
+  /**
+   * Create the directory recursively before registering it. Set by a caller
+   * that owns the directory and registers it without a user picking it; a
+   * directory the user chose already exists.
+   */
+  readonly createIfMissing?: boolean
 }
 
 /** Created or previously registered Workspace. */

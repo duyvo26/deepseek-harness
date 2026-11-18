@@ -102,6 +102,16 @@ export class ClientWorkspaceModel implements WorkspaceFollowSink {
   }
 
   /**
+   * Register the shared project-less Workspace and merge its row.
+   * @returns generated Remote result.
+   */
+  async ensureGlobal(): Promise<RemoteResult<WorkspaceValue>> {
+    const result = await this.remote.ensureGlobal()
+    if (result.ok) this.upsert(result.value.workspace)
+    return result
+  }
+
+  /**
    * Initialize the default Workspace and merge its authoritative row.
    * @param signal - caller lifetime.
    * @returns generated Remote result.

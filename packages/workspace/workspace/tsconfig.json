@@ -21,6 +21,9 @@
       "path": "../../storage/storage"
     },
     {
+      "path": "../../util/home-paths"
+    },
+    {
       "path": "../../storage/storage-domain"
     },
     {
