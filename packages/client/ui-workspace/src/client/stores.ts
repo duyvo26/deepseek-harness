@@ -27,6 +27,11 @@ type WorkspaceViewState = {
   /** Saved manual order per Workspace group plus the browser-local flat-list account. */
   sessionOrderByAccount: Record<string, string[]>
   /** Archived-row visibility; omitted in pre-filter v5 snapshots and read as 'default'. */
+  /**
+   * Archived filter, kept for the persisted view record only.
+   * @deprecated Archived Sessions are managed in Settings, so the sidebar always
+   *   lists the ones a user can open.
+   */
   archivedFilter?: ArchivedFilter
 }
 

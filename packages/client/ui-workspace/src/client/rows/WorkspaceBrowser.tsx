@@ -956,7 +956,9 @@ export function WorkspaceBrowser({
   const orderBy = useStore(s => s.orderBy)
   // Persisted view blobs written before the archived filter existed rehydrate
   // without the field; they read as the default hide-archived view.
-  const archivedFilter = useStore(s => s.archivedFilter ?? 'default')
+  // Archived Sessions are managed in Settings; a persisted "show" value from an
+  // older build must not bring a row this build cannot open back into the list.
+  const archivedFilter: ArchivedFilter = 'default'
   const groupExpansion = useStore(s => s.groupExpansion)
   const sessionOrderByAccount = useStore(s => s.sessionOrderByAccount)
   // Archived sessions are not openable: the row stays visible under the

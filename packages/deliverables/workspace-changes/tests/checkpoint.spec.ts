@@ -1,5 +1,5 @@
 /** Shadow-repository checkpoints: recording before a mutation and restoring a turn. */
-import { readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -105,7 +105,7 @@ describe('restoreTurn', () => {
     endTurn(session, 1)
     await settle(ctx, session)
 
-    expect(await ctx.workspaceChanges.restoreTurn(session.id, 1, signal)).toContain('a.txt')
+    expect(await ctx.workspaceChanges.restoreTurn(session.id, 1, signal)).toContain(join(cwd, 'a.txt'))
     expect(await readFile(join(cwd, 'a.txt'), 'utf8')).toBe('l1\nl2\nl3\n')
   })
 
@@ -120,7 +120,7 @@ describe('restoreTurn', () => {
     endTurn(session, 1)
     await settle(ctx, session)
 
-    expect(await ctx.workspaceChanges.restoreTurn(session.id, 1, signal)).toContain('new.txt')
+    expect(await ctx.workspaceChanges.restoreTurn(session.id, 1, signal)).toContain(join(cwd, 'new.txt'))
     await expect(readFile(join(cwd, 'new.txt'), 'utf8')).rejects.toThrow()
   })
 
@@ -136,6 +136,31 @@ describe('restoreTurn', () => {
 
     await ctx.workspaceChanges.restoreTurn(session.id, 1, signal)
     expect(await readFile(join(cwd, 'a.txt'), 'utf8')).toBe('l1\nl2\nl3\n')
+  })
+
+  it('restores a file the call wrote outside the Session directory', async () => {
+    const outside = await scratchDir('dsh-outside-', cleanups)
+    const cwd = join(outside, 'work')
+    await mkdir(cwd, { recursive: true })
+    await writeFile(join(cwd, 'a.txt'), 'in\n')
+    // Sibling of the Session directory: the call reaches it, so the checkpoint
+    // has to cover it.
+    const target = join(outside, 'demo.txt')
+    await writeFile(target, 'before\n')
+    const { ctx } = await boot()
+    const session = ctx.sessions.create(brandString<SessionId>('outside'), { meta: { cwd } })
+    startTurn(session, 1)
+    await settle(ctx, session)
+    // The call names an absolute path, which is what a checkpoint has to cover.
+    await mutate(ctx, session, 1, 'write', { file_path: target, content: 'after\n' }, target,
+      () => writeFile(target, 'after\n'))
+    endTurn(session, 1)
+    await settle(ctx, session)
+
+    // A checkpoint is recorded for the turn before restore can address it.
+    expect(session.snapshotEvents().filter(event => event.type === 'workspace/checkpoint')).toHaveLength(1)
+    expect(await ctx.workspaceChanges.restoreTurn(session.id, 1, signal)).toContain(target)
+    expect(await readFile(target, 'utf8')).toBe('before\n')
   })
 
   it('reports nothing for a turn this Host never checkpointed', async () => {

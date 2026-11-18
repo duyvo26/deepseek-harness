@@ -122,8 +122,9 @@ export function createWorkspaceColorStore(storage: ColorStorage = browserStorage
       store.set(next)
       try {
         storage.write(next)
-      } catch {
+      } catch (error: unknown) {
         // Quota or a denied write only stops persistence for later sessions.
+        void error
       }
     },
   }

@@ -9,6 +9,7 @@
  * git, the summary lists file-tool edits only.
  */
 import { homedir, tmpdir } from 'node:os'
+import { isAbsolute } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-agent'
@@ -16,7 +17,7 @@ import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-subprocess'
 import type {} from '@deepseek-ai/dsh-tools'
 import type { FsTarget } from '@deepseek-ai/dsh-fs'
-import { CheckpointStore, CHECKPOINT_DIRECTORY, checkpointRef } from './checkpoint.ts'
+import { CheckpointStore, checkpointRef } from './checkpoint.ts'
 import { GitRunner } from './git.ts'
 import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { TurnRecorder } from './recorder.ts'
@@ -159,7 +160,7 @@ export function apply(ctx: Context, config: Config): void {
   const checkpointStore = (): Promise<CheckpointStore | null> => {
     shadow ??= gitRunner().then((git) => {
       if (git === null) return null
-      return new CheckpointStore(git, config.checkpointHome ?? dshHomePath(CHECKPOINT_DIRECTORY))
+      return new CheckpointStore(git, config.checkpointHome ?? dshHomePath())
     })
     return shadow
   }
@@ -246,9 +247,31 @@ export function apply(ctx: Context, config: Config): void {
       mutations.set(exec, recorder)
       await recorder.settled()
     }
-    if (session !== undefined && MUTATING_TOOLS.has(exec.name)) await checkpointBefore(session, exec.name)
+    if (session !== undefined && MUTATING_TOOLS.has(exec.name)) {
+      await checkpointBefore(session, exec.name, touchedPaths(exec.arguments))
+    }
     return next()
   })
+  /**
+   * Absolute paths one tool call names as its write targets.
+   *
+   * A tool writes where its arguments say, which need not be inside the
+   * Session's directory: `write` accepts an absolute path. Those targets are
+   * what a checkpoint has to cover for an undo to put them back.
+   * @param args - the call's parsed arguments, when it has an object form.
+   * @returns absolute paths the call may change, in argument order.
+   */
+  function touchedPaths(args: unknown): readonly string[] {
+    if (typeof args !== 'object' || args === null) return []
+    const record = args as Record<string, unknown>
+    const found: string[] = []
+    for (const key of ['file_path', 'path']) {
+      const value = record[key]
+      if (typeof value === 'string' && isAbsolute(value)) found.push(value)
+    }
+    return found
+  }
+
   /**
    * Record the working directory before a mutating call so its turn can be undone.
    *
@@ -258,7 +281,11 @@ export function apply(ctx: Context, config: Config): void {
    * @param session - Session the call belongs to.
    * @param toolName - the mutating tool, recorded in the log message only.
    */
-  async function checkpointBefore(session: Session, toolName: string): Promise<void> {
+  async function checkpointBefore(
+    session: Session,
+    toolName: string,
+    targets: readonly string[],
+  ): Promise<void> {
     const cwd = cwds.get(session.id)
     const turn = recorders.get(session)?.openTurn
     if (cwd === undefined || turn === undefined) return
@@ -270,7 +297,7 @@ export function apply(ctx: Context, config: Config): void {
       // One checkpoint per turn is what restore addresses, and re-recording it on
       // every call in the turn would only move it forward past earlier edits.
       if (await store.read(shadow, ref, lifetime.signal) !== undefined) return
-      const captured = await store.capture(shadow, ref, lifetime.signal)
+      const captured = await store.capture(shadow, ref, lifetime.signal, targets)
       if (captured === undefined) {
         ctx.logger.warn(`checkpoint: could not record ${cwd} before ${toolName}`)
         return

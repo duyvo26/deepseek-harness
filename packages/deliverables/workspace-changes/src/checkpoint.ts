@@ -18,12 +18,15 @@
  */
 
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import type { GitRunner } from './git.ts'
 
 /** Directory under the harness home that holds every shadow repository. */
 export const CHECKPOINT_DIRECTORY = 'checkpoints'
+
+/** Tree prefix that marks an encoded absolute path outside the work tree. */
+const OUTSIDE_PREFIX = '.dsh-outside/'
 
 /** Recorded paths one shadow repository holds for one working directory. */
 export interface ShadowRepository {
@@ -84,14 +87,28 @@ export class CheckpointStore {
    * @param shadow - repository to record in.
    * @param ref - full ref name to point at the new commit.
    * @param signal - cancellation.
+   * @param extras - absolute paths outside the work tree the caller changed.
    * @returns the checkpoint, or undefined when the directory cannot be read.
    */
-  async capture(shadow: ShadowRepository, ref: string, signal: AbortSignal): Promise<Checkpoint | undefined> {
+  async capture(
+    shadow: ShadowRepository,
+    ref: string,
+    signal: AbortSignal,
+    extras: readonly string[] = [],
+  ): Promise<Checkpoint | undefined> {
     const scope = this.scope(shadow)
-    const added = await this.run([...scope, 'add', '--all', '--ignore-errors'], shadow.workTree, signal, true)
+    const inside = extras.filter(path => path.startsWith(`${shadow.workTree}/`))
+    const outside = extras.filter(path => !path.startsWith(`${shadow.workTree}/`))
+    const added = await this.run(
+      [...scope, 'add', '--all', '--ignore-errors', ...inside.length === 0 ? [] : ['--', ...inside]],
+      shadow.workTree, signal, true,
+    )
     // Exit code 1 reports unreadable files; the index is still complete, and a
     // checkpoint missing one file is more useful than none at all.
     if (added.exitCode !== 0 && added.exitCode !== 1) return undefined
+    // `git add` refuses a path outside the work tree, so each outside file is
+    // stored as a blob and entered under its absolute path directly.
+    for (const path of outside) await this.stageOutside(shadow, path, signal)
     const tree = await this.run([...scope, 'write-tree'], shadow.workTree, signal)
     if (tree.exitCode !== 0) return undefined
     const commit = await this.run(
@@ -139,15 +156,17 @@ export class CheckpointStore {
     for (const entry of entries) {
       const blob = await this.run([...this.scope(shadow), 'cat-file', 'blob', entry.oid], shadow.workTree, signal)
       if (blob.exitCode !== 0) throw new Error(`checkpoint blob ${entry.oid} is unreadable`)
-      const target = join(shadow.workTree, entry.path)
+      const target = this.absoluteOf(shadow, entry.path)
       await mkdir(dirname(target), { recursive: true })
       await writeFile(target, blob.stdout, 'utf8')
-      written.push(entry.path)
+      // Report the file the caller knows, not the index spelling of it.
+      written.push(target)
     }
     for (const path of before) {
       if (kept.has(path)) continue
-      await rm(join(shadow.workTree, path), { force: true })
-      written.push(path)
+      const target = this.absoluteOf(shadow, path)
+      await rm(target, { force: true })
+      written.push(target)
     }
     return written
   }
@@ -238,6 +257,49 @@ export class CheckpointStore {
       entries.push({ oid, mode, path })
     }
     return entries
+  }
+
+  /**
+   * Absolute filesystem path one recorded entry names.
+   *
+   * A path outside the work tree is recorded absolutely, because that is the
+   * only way to address it; an inside path is relative and resolves against the
+   * work tree.
+   * @param shadow - repository the entry was recorded in.
+   * @param path - recorded path.
+   * @returns the file to read or write.
+   */
+  private absoluteOf(shadow: ShadowRepository, path: string): string {
+    if (path.startsWith(OUTSIDE_PREFIX)) return decodeURIComponent(path.slice(OUTSIDE_PREFIX.length))
+    return resolve(shadow.workTree, path)
+  }
+
+  /**
+   * Store one file outside the work tree as a blob and enter it in the index.
+   *
+   * `git add` refuses a path outside the work tree, so the blob is written with
+   * `hash-object` and the index entry added with `update-index`; the recorded
+   * path is the absolute one, which restore reads back to the same file.
+   * @param shadow - repository to record in.
+   * @param path - absolute path of the file.
+   * @param signal - cancellation.
+   * @throws when the file cannot be read or the index rejects it.
+   */
+  private async stageOutside(shadow: ShadowRepository, path: string, signal: AbortSignal): Promise<void> {
+    const scope = this.scope(shadow)
+    const blob = await this.git.run(['--git-dir', shadow.gitDir, 'hash-object', '-w', '--', path], {
+      cwd: shadow.root, signal,
+    })
+    if (blob.exitCode !== 0) throw new Error(`checkpoint cannot read ${path}: ${blob.stderr.trim()}`)
+    // A git index holds only work-tree paths, so an outside file is recorded
+    // under a reserved prefix with its absolute path encoded; restore reads the
+    // same encoding back to the file it names.
+    const recorded = `${OUTSIDE_PREFIX}${encodeURIComponent(path)}`
+    const staged = await this.run(
+      [...scope, 'update-index', '--add', '--cacheinfo', `100644,${blob.stdout.trim()},${recorded}`],
+      shadow.workTree, signal,
+    )
+    if (staged.exitCode !== 0) throw new Error(`checkpoint cannot record ${path}: ${staged.stderr.trim()}`)
   }
 
   /**
