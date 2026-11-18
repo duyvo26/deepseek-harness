@@ -118,6 +118,7 @@ export const VIEWER_ENDPOINT_CLASSES = {
   'commands/execute': 'owner-only', // owner executes a slash command
   'job/kill': 'owner-only', // owner background jobs
   'session/create': 'owner-only', // owner creates a Session
+  'session/deleteSession': 'owner-only', // owner deletes a Session and its stored log
   'session/initializeDefaultModel': 'owner-only', // owner initializes a Session default model
   'session/openWorkspacePath': 'owner-only', // owner opens a Workspace path
   'session/search': 'owner-only', // owner searches across Sessions

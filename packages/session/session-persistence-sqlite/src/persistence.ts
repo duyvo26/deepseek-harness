@@ -8,8 +8,9 @@ import pLimit, { type LimitFunction } from 'p-limit'
 import { z } from 'zod'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
 import { SessionPersistence, SessionAlreadyExistsError, SessionPersistenceNotFoundError, materializeCreateHeader } from '@deepseek-ai/dsh-session-persistence'
-import type { SessionAccess, SessionPersistenceCreateOptions, SessionPersistenceOpenOptions,
-  SessionPersistenceStatOptions, SessionPersistenceListOptions, SessionPersistenceSnapshot } from '@deepseek-ai/dsh-session-persistence'
+import type { SessionAccess, SessionPersistenceCreateOptions, SessionPersistenceDeleteOptions,
+  SessionPersistenceOpenOptions, SessionPersistenceStatOptions, SessionPersistenceListOptions,
+  SessionPersistenceSnapshot } from '@deepseek-ai/dsh-session-persistence'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionHeader } from '@deepseek-ai/dsh-session'
 import { publishNewFileWin32, ensureDurableDirectoryWin32 } from './win32.ts'
@@ -174,6 +175,27 @@ export class SqliteSessionPersistence extends SessionPersistence {
     const snapshot = await this.selected(id, options?.signal)
     options?.signal?.throwIfAborted()
     return snapshot === undefined ? this.jsonl.stat(id, options) : snapshot
+  }
+
+  /**
+   * Delete one stored Session and the directory holding its database.
+   *
+   * The store's own triggers make its rows append-only, so the whole Session
+   * directory is removed instead of deleting rows: a Session is the unit a
+   * reader addresses, and a partially emptied database would be unreadable.
+   * @param id - the Session to delete.
+   * @param options - optional cancellation.
+   */
+  async delete(id: SessionId, options?: SessionPersistenceDeleteOptions): Promise<void> {
+    options?.signal?.throwIfAborted()
+    const snapshot = await this.selected(id, options?.signal)
+    if (snapshot === undefined) {
+      // The legacy JSONL backend owns identities this store has not taken over.
+      await this.jsonl.delete(id, options)
+      return
+    }
+    options?.signal?.throwIfAborted()
+    await rm(sessionDir(this.rootPath, snapshot.header.cwd, id), { recursive: true, force: true })
   }
 
   async list(options?: SessionPersistenceListOptions) {

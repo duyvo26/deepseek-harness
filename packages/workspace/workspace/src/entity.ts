@@ -196,9 +196,10 @@ export class WorkspaceEntity implements Workspace {
   }
 
   async detachSession(sessionId: SessionId): Promise<void> {
-    await this.mutate(record => record.sessionIds.includes(sessionId)
-      ? { ...record, sessionIds: record.sessionIds.filter(id => id !== sessionId) }
-      : record)
+    await this.mutate((record) => {
+      if (!record.sessionIds.includes(sessionId)) return record
+      return { ...record, sessionIds: record.sessionIds.filter(id => id !== sessionId) }
+    })
   }
 
   async status(): Promise<'ok' | 'missing-dir'> {
@@ -223,6 +224,19 @@ export class WorkspaceEntity implements Workspace {
    * through the sentinel when pruning also finds nothing, so a no-op neither
    * rewrites the medium nor emits a change event.
    */
+  /**
+   * Drop one Session from this Workspace's membership.
+   *
+   * A deleted Session's log is gone, so a record still naming it would project a
+   * row no reader can open.
+   * @param sessionId - the Session to forget.
+   */
+  async forgetSession(sessionId: SessionId): Promise<void> {
+    await this.mutate(record => record.sessionIds.includes(sessionId)
+      ? { ...record, sessionIds: record.sessionIds.filter(id => id !== sessionId) }
+      : record)
+  }
+
   private async mutate(fn: (record: WorkspaceRecord) => WorkspaceRecord): Promise<void> {
     let next: WorkspaceRecord
     try {

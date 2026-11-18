@@ -17,6 +17,7 @@ import {
   shiftRetention,
 } from '@deepseek-ai/dsh-api-session-controller/src/client/sessions/facets.ts'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
+import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { SubagentAddress } from '@deepseek-ai/dsh-subagent/client'
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import type { ObservableSnapshot, SnapshotStore } from '@deepseek-ai/dsh-client-store'
@@ -315,7 +316,7 @@ export class TestSessions implements ISessions {
 
   /** Calls observed on the service-level face, newest last. */
   readonly calls: {
-    method: 'create' | 'refreshProjections' | 'refresh' | 'search' | 'fork'
+    method: 'create' | 'refreshProjections' | 'refresh' | 'search' | 'fork' | 'deleteSession'
     args: unknown[]
   }[] = []
 
@@ -685,6 +686,17 @@ export class TestSessions implements ISessions {
   fork(opts: Parameters<ISessions['fork']>[0]): Promise<SessionId> {
     this.calls.push({ method: 'fork', args: [opts] })
     return Promise.resolve(opts.sessionId)
+  }
+
+  /**
+   * Recorded delete stub: the fixture keeps its rows, so a bench asserting the
+   * real removal drives the Host service instead.
+   * @param opts - the Session to delete and its stop permission.
+   * @returns the Host result the production face would return.
+   */
+  deleteSession(opts: Parameters<ISessions['deleteSession']>[0]): Promise<RemoteResult<{ deleted: boolean }>> {
+    this.calls.push({ method: 'deleteSession', args: [opts] })
+    return Promise.resolve({ ok: true, value: { deleted: true } })
   }
 
   /**

@@ -231,6 +231,24 @@ export abstract class SessionPersistence extends Service {
    * @returns one snapshot per stored session.
    */
   abstract list(options?: SessionPersistenceListOptions): Promise<readonly SessionPersistenceSnapshot[]>
+
+  /**
+   * Delete one stored session and its recorded events.
+   *
+   * This is the only destructive session operation, so the caller owns the
+   * confirmation: a deleted session cannot be reopened, archived, or restored.
+   * A session this store does not hold is not an error — the requested end state
+   * already holds — which keeps a retried delete idempotent.
+   * @param id - session to delete.
+   * @param options - optional cancellation.
+   */
+  abstract delete(id: SessionId, options?: SessionPersistenceDeleteOptions): Promise<void>
+}
+
+/** Cancellation for one delete. */
+export interface SessionPersistenceDeleteOptions {
+  /** Cancels the delete before it removes anything. */
+  readonly signal?: AbortSignal | undefined
 }
 
 export default SessionPersistence

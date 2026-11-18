@@ -36,6 +36,8 @@ afterEach(async () => {
 })
 
 class HeaderPersistence extends SessionPersistence {
+  async delete(): Promise<void> {}
+
   readonly headers: SessionHeader[]
 
   constructor(ctx: Context, config: { headers: SessionHeader[] }) {

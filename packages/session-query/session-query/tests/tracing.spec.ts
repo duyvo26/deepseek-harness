@@ -123,6 +123,8 @@ class TracePersistence extends SessionPersistence {
     })
   }
 
+  async delete(): Promise<void> {}
+
   list(): Promise<readonly SessionPersistenceSnapshot[]> {
     TracePersistence.listCalls += 1
     if (TracePersistence.listFailure !== undefined) return Promise.reject(TracePersistence.listFailure)

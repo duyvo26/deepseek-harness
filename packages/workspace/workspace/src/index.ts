@@ -420,6 +420,46 @@ export class WorkspaceRegistry extends Service {
    * @param options - Whether running work is stopped instead of refusing.
    * @returns resolution after durability, any stop requests, and follow-up admission.
    */
+  /**
+   * Forget every record of one Session that no longer exists.
+   *
+   * Deleting a Session removes its log, so a Workspace still naming it would
+   * list a row no reader can open. The archive and pin sets are cleared here too:
+   * both are keyed by a Session id that will never be resolved again.
+   * @param sessionId - the Session whose records are dropped.
+   */
+  detachSession(sessionId: SessionId): Promise<void> {
+    return this.enqueueOperation(async () => {
+      for (const workspace of this.list()) {
+        if (workspace.sessionIds.includes(sessionId)) await workspace.forgetSession(sessionId)
+      }
+      const state = this.requireState()
+      if (!state.archivedSessionIds.includes(sessionId) && !state.pinnedSessionIds.includes(sessionId)) return
+      await this.setState({
+        ...state,
+        archivedSessionIds: state.archivedSessionIds.filter(id => id !== sessionId),
+        pinnedSessionIds: state.pinnedSessionIds.filter(id => id !== sessionId),
+      })
+    })
+  }
+
+  /**
+   * Archive one session durably. The session must exist (live or in session
+   * persistence); its workspace accounting — or lack of one — is irrelevant.
+   * Without `stopActivity` the session must also be inactive: the
+   * `workspace/session-activity` waterfall is asked once, and any reported
+   * activity rejects with {@link WorkspaceActiveSessionError} before anything
+   * is written. With `stopActivity` the archive is written without an
+   * activity check, and the `workspace/session-stop` providers are then asked
+   * to stop the session's work: the durable archive set is what a provider's
+   * `agent/pre-step` gate reads, so every wake the stops induce is already
+   * blocked. Archiving drops the session's pin in the same durable write
+   * (pinning and archival are mutually exclusive). An already archived id
+   * resolves without writing, asking, or stopping.
+   * @param sessionId - The session to archive.
+   * @param options - Whether running work is stopped instead of refusing.
+   * @returns resolution after durability, any stop requests, and follow-up admission.
+   */
   archiveSession(sessionId: SessionId, options: ArchiveSessionOptions = {}): Promise<void> {
     return this.enqueueOperation(async () => {
       // The chain slot serializes against every other registry write, so this

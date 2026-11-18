@@ -20,7 +20,7 @@ async function fixture() {
   const sqlite = new SqliteStore({ path: join(root, 'sessions.sqlite'), legacyRoot: root, ...FRAME_DEFAULTS,
     acquireCreationLease: async () => ({ release: async () => {} }), publish: async () => {}, report: () => {} })
   const jsonl: JsonlBackend = {
-    hasStoredJsonl: async () => true, list: async () => [],
+    hasStoredJsonl: async () => true, list: async () => [], delete: async () => {},
     stat: async () => ({ header, revision: SessionPersistenceRevision('legacy'), eventCount: 0 }),
     prepare: async () => ({ header, inheritedEventCount: SessionLogOffset(0), events: [],
       commit: async publish => publish({ header, inheritedEventCount: SessionLogOffset(0), events: [] }) }),

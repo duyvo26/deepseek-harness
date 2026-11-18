@@ -45,6 +45,8 @@ import type {
   SessionCreateValue,
   SessionFollowFrame,
   SessionFollowRequest,
+  SessionDeleteRequest,
+  SessionDeleteValue,
   SessionForkRequest,
   SessionForkValue,
   SessionListRequest,
@@ -410,6 +412,18 @@ export class SessionController extends TypertRemoteService {
   @Remote('rename')
   rename(request: SessionRenameRequest): Promise<SessionRenameValue> {
     return this.commands.rename(request)
+  }
+
+  /**
+   * Fork one cold-readable exact event prefix into a new Session. An omitted
+   * boundary selects the latest completed-turn prefix; an open cut receives
+   * synthetic fork closers.
+   * @param request - source Session, optional exact inclusive event boundary, and migration preflight choice.
+   * @returns the new Session identity.
+   */
+  @Remote('deleteSession')
+  async deleteSession(request: SessionDeleteRequest): Promise<SessionDeleteValue> {
+    return await this.commands.deleteSession(request)
   }
 
   /**

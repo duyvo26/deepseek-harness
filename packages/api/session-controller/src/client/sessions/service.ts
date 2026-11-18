@@ -479,6 +479,10 @@ export class ClientSessions implements ISessions {
    * @throws {SessionForkError} with the source id.
    * @throws {Error} when a requested child-title rename fails after creation.
    */
+  async deleteSession(opts: { sessionId: SessionId; stopActivity?: boolean }): Promise<RemoteResult<{ deleted: boolean }>> {
+    return await this.manager.deleteSession(opts)
+  }
+
   async fork(opts: {
     sessionId: SessionId
     atSeq?: number

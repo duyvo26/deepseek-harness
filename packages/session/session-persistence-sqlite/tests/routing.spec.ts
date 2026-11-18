@@ -60,6 +60,7 @@ class Adapter extends SqliteSessionPersistence {
       async stat() { return undefined },
       async list() { return [] },
       async hasStoredJsonl() { return false },
+      async delete() {},
     })
   }
   publishRoute(id: SessionId) { return this.publish(id) }

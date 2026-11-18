@@ -198,6 +198,10 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'session/steer-unavailable': { readonly itemId: MessageId }
     'session/title-invalid': { readonly sessionId: SessionId }
     'session/fork-unavailable': { readonly sessionId: SessionId }
+    /** The Session is open, so deleting it needs permission to stop its work. */
+    'session/active': { readonly sessionId: SessionId }
+    /** Deleting a Session needs session storage, which this Host did not compose. */
+    'session/persistence-unavailable': Record<string, never>
     'session/migration-required': { readonly sessionId: SessionId }
     'subagent/not-found': {
       readonly parentSessionId: SessionId
@@ -305,6 +309,22 @@ export interface SessionForkRequest {
   readonly atSeq?: number
   /** False asks the Host to check for required migration before forking. Defaults to true. */
   readonly allowMigration?: boolean
+}
+
+/** Request to delete one stored Session permanently. */
+export interface SessionDeleteRequest {
+  readonly sessionId: SessionId
+  /**
+   * Stop the Session's running work instead of refusing the delete while a turn
+   * runs. The stops are requested before the artifact is removed.
+   */
+  readonly stopActivity?: boolean
+}
+
+/** Result of deleting one Session. */
+export interface SessionDeleteValue {
+  /** Whether an artifact was removed; false when the Session was already gone. */
+  readonly deleted: boolean
 }
 
 /** Identity of a newly forked Session. */

@@ -146,6 +146,10 @@ export const zh = {
   'time.months': '{n}个月',
   'time.years': '{n}年',
   'time.ago': '{t}前',
+  'menu.deleteSession': '永久删除会话',
+  'delete.session.title': '删除会话',
+  'delete.session.body': '此操作无法撤销，会话及其记录将被删除。',
+  'delete.session.confirm': '删除',
 } satisfies Record<string, string>
 
 /** The workspace namespace key union. */
@@ -293,6 +297,10 @@ export const en = {
   'time.months': '{n}mo',
   'time.years': '{n}y',
   'time.ago': '{t} ago',
+  'menu.deleteSession': 'Delete session permanently',
+  'delete.session.title': 'Delete session',
+  'delete.session.body': 'This cannot be undone. The session and its history will be deleted.',
+  'delete.session.confirm': 'Delete',
 } satisfies Record<WorkspaceKey, string>
 
 /** Japanese copy, checked against the English keys. */
@@ -437,6 +445,10 @@ export const ja = {
   'time.months': '{n}か月',
   'time.years': '{n}年',
   'time.ago': '{t}前',
+  'menu.deleteSession': 'セッションを完全に削除',
+  'delete.session.title': 'セッションを削除',
+  'delete.session.body': 'この操作は取り消せません。セッションと履歴が削除されます。',
+  'delete.session.confirm': '削除',
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -581,6 +593,10 @@ export const es = {
   'time.months': '{n}mo',
   'time.years': '{n}y',
   'time.ago': 'Hace {t}',
+  'menu.deleteSession': 'Eliminar sesión permanentemente',
+  'delete.session.title': 'Eliminar sesión',
+  'delete.session.body': 'Esta acción no se puede deshacer. La sesión y su historial se eliminarán.',
+  'delete.session.confirm': 'Eliminar',
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -725,6 +741,10 @@ export const fr = {
   'time.months': '{n}mo',
   'time.years': '{n}y',
   'time.ago': 'Il y a {t}',
+  'menu.deleteSession': 'Supprimer définitivement la session',
+  'delete.session.title': 'Supprimer la session',
+  'delete.session.body': 'Cette action est irréversible. La session et son historique seront supprimés.',
+  'delete.session.confirm': 'Supprimer',
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -869,6 +889,10 @@ export const de = {
   'time.months': '{n}mo',
   'time.years': '{n}y',
   'time.ago': 'Vor {t}',
+  'menu.deleteSession': 'Sitzung endgültig löschen',
+  'delete.session.title': 'Sitzung löschen',
+  'delete.session.body': 'Dies kann nicht rückgängig gemacht werden. Die Sitzung und ihr Verlauf werden gelöscht.',
+  'delete.session.confirm': 'Löschen',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -1013,6 +1037,10 @@ export const ru = {
   'time.months': '{n}mo',
   'time.years': '{n}y',
   'time.ago': '{t} назад',
+  'menu.deleteSession': 'Удалить сеанс навсегда',
+  'delete.session.title': 'Удалить сеанс',
+  'delete.session.body': 'Это действие необратимо. Сеанс и его история будут удалены.',
+  'delete.session.confirm': 'Удалить',
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -1157,4 +1185,8 @@ export const pt = {
   'time.months': '{n} mês',
   'time.years': '{n}s',
   'time.ago': '{t} atrás',
+  'menu.deleteSession': 'Excluir sessão permanentemente',
+  'delete.session.title': 'Excluir sessão',
+  'delete.session.body': 'Isto não pode ser desfeito. A sessão e seu histórico serão excluídos.',
+  'delete.session.confirm': 'Excluir',
 } satisfies Record<keyof typeof en, string>

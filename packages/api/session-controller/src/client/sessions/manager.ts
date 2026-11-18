@@ -526,6 +526,26 @@ export class SessionManager {
   }
 
   /**
+   * Contract session.deleteSession; the summary leaves the list on success.
+   *
+   * Deleting destroys the stored log, so the caller owns the confirmation.
+   * @param opts - the Session to delete and whether its running work may be stopped.
+   * @returns the delete result.
+   */
+  async deleteSession(
+    opts: { sessionId: SessionId; stopActivity?: boolean },
+  ): Promise<RemoteResult<{ deleted: boolean }>> {
+    const result = await this.remote.session.deleteSession({
+      sessionId: opts.sessionId,
+      ...opts.stopActivity === true ? { stopActivity: true } : {},
+    })
+    // The Host's next list read drops the row; a local removal here would race
+    // the projection that other views still read.
+    if (result.ok) await this.refreshList()
+    return result
+  }
+
+  /**
    * Contract session.fork; on success merge the child into summaries
    * immediately (same synchronous-addressability guarantee as create).
    * Blankness starts provisionally true so the authoritative Host summary can

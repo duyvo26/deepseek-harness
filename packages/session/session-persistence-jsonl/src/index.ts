@@ -27,7 +27,7 @@ import {
   assertStoredId, materializeCreateHeader, sessionFormatVersionRefusal, validateStoredEvents,
   type SessionAccess, type SessionHandle,
   type SessionHandleReadResult,
-  type SessionLocation, type SessionPersistenceCreateOptions,
+  type SessionLocation, type SessionPersistenceCreateOptions, type SessionPersistenceDeleteOptions,
   type SessionPersistenceListOptions, type SessionPersistenceOpenOptions,
   type SessionPersistenceSnapshot, type SessionPersistenceStatOptions,
   type SessionPersistenceRevision as PersistenceRevision,
@@ -604,6 +604,26 @@ export class JsonlSessionPersistence extends SessionPersistence {
       if (isENOENT(error)) return undefined
       throw error
     }
+  }
+
+  /**
+   * Delete one stored session's artifact directory.
+   *
+   * The generation directory holds the log and its sidecars, so removing it
+   * removes the session completely. A session this store does not hold is
+   * already in the requested state and is not an error.
+   * @param id - the session to delete.
+   * @param options - optional cancellation.
+   */
+  async delete(id: SessionId, options?: SessionPersistenceDeleteOptions): Promise<void> {
+    options?.signal?.throwIfAborted()
+    await this.ensureRootEncoding()
+    const selected = await this.findLog(id, options?.signal)
+    if (selected === undefined) return
+    options?.signal?.throwIfAborted()
+    // The generation directory, not only the log file: a sidecar left behind
+    // would make a later read see a half-deleted session.
+    await rm(dirname(selected.sourcePath), { recursive: true, force: true })
   }
 
   /**

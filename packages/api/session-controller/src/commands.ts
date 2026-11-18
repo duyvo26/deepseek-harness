@@ -42,6 +42,8 @@ import type {
   SessionCancelValue,
   SessionCreateRequest,
   SessionCreateValue,
+  SessionDeleteRequest,
+  SessionDeleteValue,
   SessionForkRequest,
   SessionForkValue,
   SessionPromptRequest,
@@ -218,6 +220,41 @@ export class SessionCommandController {
         {},
       )
     }
+  }
+
+  /**
+   * Create a new ordinary Session from an exact event prefix. An explicit
+   * `atSeq` is the inclusive cut; an omitted value selects the latest
+   * completed-turn prefix. An open cut receives synthetic fork closers.
+   * @param request - source Session and optional exact event boundary.
+   * @returns the new Session identity.
+   */
+  /**
+   * Delete one stored Session permanently.
+   *
+   * Removing the artifact is the last step: the Session leaves the registry
+   * first so no live reader can resolve it while its log disappears.
+   * @param request - the Session to delete and whether running work may be stopped.
+   * @returns whether an artifact was removed.
+   */
+  async deleteSession(request: SessionDeleteRequest): Promise<SessionDeleteValue> {
+    const persistence = this.ctx.get('sessionPersistence')
+    if (persistence === undefined) {
+      throw new RemoteError('session/persistence-unavailable', 'Session deletion needs session storage', {})
+    }
+    const live = this.ctx.sessions.get(request.sessionId)
+    if (live !== undefined && request.stopActivity !== true) {
+      throw new RemoteError('session/active', 'Session is open; allow stopping its work to delete it', {
+        sessionId: request.sessionId,
+      })
+    }
+    // Detach from its Workspace first: a record naming a deleted Session would
+    // project an empty row no reader can open.
+    await this.ctx.workspaceRegistry.detachSession(request.sessionId)
+    const stored = await persistence.stat(request.sessionId)
+    if (stored === undefined) return { deleted: false }
+    await persistence.delete(request.sessionId)
+    return { deleted: true }
   }
 
   /**

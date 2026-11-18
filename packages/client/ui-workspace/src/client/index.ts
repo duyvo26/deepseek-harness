@@ -47,12 +47,14 @@ import type {} from '@deepseek-ai/dsh-client-ui-session-status/client'
 import {
   type ArchiveSessionInjected, type DirectoryFlowSlotName, type ForkSessionInjected, menuOpenStateFactory, type PinSessionInjected,
   type SessionArchiveConfirmInjected, type SessionArchiveConfirmRequest,
+  type SessionDeleteConfirmInjected, type SessionDeleteRequest,
   type RenameSessionInjected, type RowToast, type RowToastInjected, type RowToastState, type SessionRenameDialogInjected,
   type WorkspaceActionRequest, type SessionIdInjected, type WorkspaceBrowserInjected, type WorkspacePickerInjected,
 } from './contract/slots.ts'
 import { createWorkspaceShortcutControls, installWorkspaceShortcuts } from './shortcuts.ts'
 import { UiWorkspaceService } from './navigation.ts'
 import { createWorkspaceViewStore } from './stores.ts'
+import { SessionDeleteDialog } from './rows/SessionDeleteDialog.tsx'
 import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
 import { ArchiveSessionRowButton, SessionArchiveConfirmDialog } from './session-actions/ArchiveSession.tsx'
 import { derive } from './session-actions/derived.ts'
@@ -241,6 +243,9 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   // its bound hook.
   const renameRequest = derive(shortcutControls.state, state => state.renameTarget)
   const archiveRequest = createSnapshotStore<SessionArchiveConfirmRequest | null>(null)
+  // Deleting destroys the log, so the menu raises a request and the dialog owns
+  // the destructive call and its failure report.
+  const deleteRequest = createSnapshotStore<SessionDeleteRequest | null>(null)
   const requestSessionRename = shortcutControls.rename
   const unarchiveSession = (sessionId: SessionId): void => {
     uiWorkspace.unarchiveSession(sessionId).catch((reason: unknown) => {
@@ -299,9 +304,23 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
       })
     },
     unarchiveSession,
+    // Deleting destroys the log, so the request opens a confirmation instead of
+    // running here; the dialog owns the call and its failure report.
+    deleteSession: async (sessionId) => {
+      const result = await sessions.deleteSession({ sessionId, stopActivity: true })
+      if (!result.ok) throw new Error(result.error.message)
+    },
   })
   installWorkspaceShortcuts(ctx, uiWorkspace, shortcutControls, archiveInjected().archiveSession,
     (reason) => { notify({ kind: 'shortcutForkFailed', reason }) }, markSession)
+  const deleteConfirmInjected = (): SessionDeleteConfirmInjected => ({
+    hooks: { deleteRequest },
+    settleSessionDelete: () => { deleteRequest.set(null) },
+    deleteSession: async (sessionId) => {
+      const result = await sessions.deleteSession({ sessionId, stopActivity: true })
+      if (!result.ok) throw new Error(result.error.message)
+    },
+  })
   const archiveConfirmInjected = (): SessionArchiveConfirmInjected => ({
     hooks: { archiveRequest },
     settleSessionArchive: () => { archiveRequest.set(null) },
@@ -365,6 +384,7 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
       'workspace.rename': IconEditOutlineRegular, 'workspace.delete': IconTrashOutlineRegular,
       'workspace.pin': IconPinOutlineRegular, 'workspace.unpin': IconPinFillRegular,
       'workspace.archive': IconArchiveOutlineRegular, 'workspace.unarchive': IconUnarchiveOutlineRegular,
+      'workspace.deleteSession': IconTrashOutlineRegular,
       'workspace.fork': IconBranchOutlineRegular, 'workspace.copy': IconCopyOutlineRegular,
       'workspace.markRead': IconMailReadOutlineRegular, 'workspace.markUnread': IconMailUnreadOutlineRegular,
     })) yield ctx.slots.register({ name: 'contextMenu.icon', key }, Icon)
@@ -498,6 +518,7 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   registerSessionMenus(ctx, {
     ...pinInjected(), ...archiveInjected(), ...renameInjected(), ...forkInjected(), ...sessionIdInjected(),
     markSession,
+    requestSessionDelete: (sessionId, displayTitle) => { deleteRequest.set({ sessionId, displayTitle }) },
   })
   ctx.slots.inject('sidebar.workspaces.session.row.action', function* () {
     yield ctx.slots.register({ name: 'sidebar.workspaces.session.row.action', id: 'archive', order: 100, locale: NS, inject: archiveInjected }, ArchiveSessionRowButton)
@@ -512,6 +533,9 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
     yield ctx.slots.register({
       name: 'shell.overlay', id: 'workspace.session-archive', locale: NS, inject: archiveConfirmInjected,
     }, SessionArchiveConfirmDialog)
+    yield ctx.slots.register({
+      name: 'shell.overlay', id: 'workspace.session-delete', locale: NS, inject: deleteConfirmInjected,
+    }, SessionDeleteDialog)
     yield ctx.slots.register({
       name: 'shell.overlay', id: 'workspace.row-toast', inject: rowToastInjected,
       children: { 'workspace.toast': { kind: 'keyed', scope: 'root' } },

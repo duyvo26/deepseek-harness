@@ -160,6 +160,15 @@ export interface ISessions {
     allowMigration?: boolean
   }): Promise<SessionId>
   /**
+   * Delete a Session and its stored log.
+   *
+   * Deleting destroys the log, so the caller owns the confirmation; archiving is
+   * the reversible way to take a Session out of the list.
+   * @param opts - the Session to delete and whether its running work may be stopped.
+   * @returns the Host result, which reports whether an artifact was removed.
+   */
+  deleteSession(opts: { sessionId: SessionId; stopActivity?: boolean }): Promise<RemoteResult<{ deleted: boolean }>>
+  /**
    * Borrow an already-retained Agent-scoped Context without extending its lifetime.
    * @param id - session id.
    * @returns the live scoped Context, or undefined without a retained generation.

@@ -143,6 +143,11 @@ class TestPersistence extends SessionPersistence {
     return { header: stored.meta, revision: brandString<SessionPersistenceRevision>(`test:${id}:${stored.events.length}`) }
   }
 
+  /** Delete one stored session; the doubles keep their store in memory. */
+  async delete(id: SessionId): Promise<void> {
+    this.durable?.delete(id)
+  }
+
   async list(): Promise<SessionPersistenceSnapshot[]> {
     return [...this.durable.entries()].map(([id, stored]) => ({
       header: stored.meta,

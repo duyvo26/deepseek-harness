@@ -189,6 +189,11 @@ class TestPersistence extends SessionPersistence {
     })
   }
 
+  /** Delete one stored session from this double's own store. */
+  async delete(id: SessionId): Promise<void> {
+    TestPersistence.entries.delete(id)
+  }
+
   async list(options?: SessionPersistenceListOptions): Promise<readonly SessionPersistenceSnapshot[]> {
     TestPersistence.listSignals.push(options?.signal)
     TestPersistence.listStarted?.()

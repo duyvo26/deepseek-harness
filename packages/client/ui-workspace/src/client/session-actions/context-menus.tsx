@@ -13,6 +13,15 @@ import type {
 type Actions = Omit<PinSessionInjected & ArchiveSessionInjected, 'hooks'>
   & ForkSessionInjected & RenameSessionInjected & SessionIdInjected
   & { readonly markSession: (sessionId: SessionId, unread: boolean) => void }
+  & {
+    /**
+     * Ask the owner to delete a Session, which opens the confirmation that owns
+     * the destructive call.
+     * @param sessionId - Session to delete.
+     * @param displayTitle - title the confirmation names.
+     */
+    readonly requestSessionDelete: (sessionId: SessionId, displayTitle: string) => void
+  }
 
 /**
  * Register built-in actions while retaining the legacy Slot for external components.
@@ -73,6 +82,10 @@ export function registerSessionMenus(ctx: Context, actions: Actions): void {
     id: 'copy', label: t('menu.sessionId'), icon: { key: 'workspace.copy' }, separatorBefore: true,
     run: () => actions.copySessionId(target.sessionId),
   }])
+  register('delete', 700, ['session/deleteSession'], target => allowed(target, 'session/deleteSession') ? [{
+    id: 'delete', label: t('menu.deleteSession'), icon: { key: 'workspace.deleteSession' }, danger: true,
+    run: () => { actions.requestSessionDelete(target.sessionId, target.displayTitle) },
+  }] : [])
   register('archive', 600, ['workspace/archiveSession', 'workspace/unarchiveSession'], (target) => {
     const restoring = archived(target)
     if (!allowed(target, restoring ? 'workspace/unarchiveSession' : 'workspace/archiveSession')) return []

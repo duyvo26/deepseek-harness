@@ -141,6 +141,7 @@ describe('pin action', () => {
 describe('archive action', () => {
   const archiveShare = (archived: readonly string[] = []) => ({
     useArchived: hook(idSet(...archived)), archiveSession: vi.fn(), unarchiveSession: vi.fn(),
+    deleteSession: vi.fn(async () => {}),
   })
 
   it('offers no archive button without access but checks restore separately', () => {

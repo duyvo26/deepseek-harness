@@ -74,6 +74,12 @@ export interface Workspace {
   readonly id: WorkspaceId
 
   /**
+   * Drop one Session from this Workspace's membership.
+   * @param sessionId - the Session to forget.
+   */
+  forgetSession(sessionId: SessionId): Promise<void>
+
+  /**
    * Whether this is the shared project-less chat Workspace.
    *
    * The Host answers because it alone resolves `$DSH_HOME`: a browser cannot
