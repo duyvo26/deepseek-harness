@@ -3705,7 +3705,7 @@ describe('ChatView', () => {
     expect(view.queryByText(/首 token|tok\/s/)).toBeNull()
   })
 
-  it('keeps only the latest turn tail actions permanently visible', () => {
+  it('keeps every turn tail actions permanently visible', () => {
     const h = makeHarness({
       nodes: [
         user(1, 'hi'),
@@ -3723,7 +3723,9 @@ describe('ChatView', () => {
     const tails = view.container.querySelectorAll('[data-turn-tail]')
     expect(new Map([...tails].map(tail => [
       tail.getAttribute('data-turn-tail'), tail.getAttribute('data-actions-reveal'),
-    ]))).toEqual(new Map([['1', 'hover'], ['2', 'always']]))
+    // Hover no longer gates the row: an action a turn offers stays visible, so
+    // a user reads the controls instead of hunting for them.
+    ]))).toEqual(new Map([['1', 'always'], ['2', 'always']]))
     expect(view.container.querySelectorAll('[data-chat-flow-kind="user"]')).toHaveLength(2)
   })
 

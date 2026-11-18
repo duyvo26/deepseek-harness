@@ -4,7 +4,6 @@ import type { ChatNodeViewProps, PerformanceUsageInjected, TurnTailOwnerProps } 
 import { MessageIconActions } from './MessageIconActions.tsx'
 import { TurnUsagePanel } from './TurnUsagePanel.tsx'
 import { assistantText } from './turn-assistant.ts'
-import { hasAssistantReplyContent } from '../contract/assistant-content.ts'
 import type { ChatNode } from '../contract/chat-nodes.ts'
 import type { ChatSnapshot } from '../contract/snapshot.ts'
 import css from './TurnTailNodeView.module.css'
@@ -36,13 +35,6 @@ export const TurnTailNodeView = memo(function TurnTailNodeView({
   const startSeq = useChat(snapshot => (snapshot.timeline.turns.get(data.turn)?.start?.seq ?? 1) - 1)
   const hasLaterChatNode = useChat(snapshot =>
     (lastContent(snapshot, data.turn, true)?.anchorSeq ?? -1) > (data.closing?.finalNode.seq ?? data.seq))
-  const endsWithResponse = useChat((snapshot) => {
-    if (snapshot.timeline.turnOrder.at(-1) !== data.turn) return false
-    const last = lastContent(snapshot, data.turn, false)
-    const block = last?.kind === 'assistant-step' ? last.data.blocks.findLast(candidate =>
-      (candidate.kind !== 'text' && candidate.kind !== 'reasoning') || candidate.text.trim() !== '') : undefined
-    return block !== undefined && hasAssistantReplyContent([block])
-  })
   const turn = node.location.kind === 'turn' || node.location.kind === 'step'
     ? node.location.turn
     : undefined
@@ -61,7 +53,9 @@ export const TurnTailNodeView = memo(function TurnTailNodeView({
     <div
       className={css.root}
       data-turn-tail={data.turn}
-      data-actions-reveal={endsWithResponse ? 'always' : 'hover'}
+      // The action row is always visible: hiding it behind hover leaves the user
+      // hunting for the controls a turn already offers.
+      data-actions-reveal="always"
     >
       {tail}
       <MessageIconActions
