@@ -29,6 +29,8 @@ import type { LlmNativeAuth, SettingsNamespaceView } from '@deepseek-ai/dsh-api-
 // Type-only: pulls this package's SlotMap merge (the two Models child slots).
 import type {} from './slot-contract.ts'
 import { CustomProviderCard } from './CustomProviderCard.tsx'
+import { ModelsConfigIo } from './ModelsConfigIo.tsx'
+import type { ExportableProvider } from './ModelsConfigIo.tsx'
 import { deriveKeyRef, protocolChoices, providerUsable, reasoningLevelChoices } from './store.ts'
 import type { ModelsSettingsStore, ProviderRow } from './store.ts'
 import type { ModelsOperations } from './operations.ts'
@@ -719,6 +721,22 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
             )
             : null}
       </div>
+      <ModelsConfigIo
+        providers={configured.flatMap((row): ExportableProvider[] => row.entry.settingsNs.length === 0
+          ? []
+          : [{
+            provider: row.entry.provider,
+            displayName: row.entry.displayName,
+            settingsNs: row.entry.settingsNs,
+            settingsPath: row.entry.settingsPath,
+            ...row.apiKeyEnv === undefined ? {} : { apiKeyEnv: row.apiKeyEnv },
+            credentialConfigured: row.credential?.configured === true,
+          }])}
+        namespaces={state.namespaces}
+        operations={operations}
+        reload={() => controller.load()}
+        t={t}
+      />
       {renderSlot('settings.models.footer', {})}
       <Modal
         open={deleteTarget !== undefined}

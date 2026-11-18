@@ -1028,3 +1028,66 @@ select.input {
     font-size: 16px;
   }
 }
+
+/* Export/import controls sit below the provider rows, above the footer slot. */
+.configIo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.configIoActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* The picker is driven by its button, so it stays out of the layout. */
+.configIoFile {
+  display: none;
+}
+
+.configIoNotice {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.configIoList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.configIoItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.configIoName {
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+.configIoTag {
+  padding: 0 6px;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.configIoMeta {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+  line-height: 18px;
+}
