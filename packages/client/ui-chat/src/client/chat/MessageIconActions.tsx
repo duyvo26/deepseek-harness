@@ -70,7 +70,6 @@ export function MessageIconActions({
           {copied ? <IconCheckOutlineRegular /> : <IconCopyOutlineRegular />}
         </button>
       </Tooltip>
-      {extraActions}
       {onUndo !== undefined && (
         <Tooltip label={t('message.undo')} side="bottom">
           <button type="button" className={css.action} aria-label={t('message.undo')} onClick={onUndo}>
@@ -78,6 +77,7 @@ export function MessageIconActions({
           </button>
         </Tooltip>
       )}
+      {extraActions}
       {onBranch !== undefined && (
         <Tooltip label={branchUnavailable ? t('message.branchUnavailable') : t('message.branch')} side="bottom" openOnClick={branchUnavailable}>
           {/* Native disabled buttons do not deliver the hover/focus events Tooltip needs. */}

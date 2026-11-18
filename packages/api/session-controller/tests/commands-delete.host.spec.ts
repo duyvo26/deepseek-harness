@@ -110,6 +110,25 @@ describe('deleteSession', () => {
     await ctx.fiber.dispose()
   })
 
+  it('deletes an archived Session, clearing its archive record too', async () => {
+    const ctx = await baseContext()
+    const persistence = persistenceDouble(['session-archived'])
+    const detach = vi.fn(async () => {})
+    ctx.provide('sessionPersistence', persistence.service)
+    ctx.provide('workspaceRegistry', {
+      detachSession: detach, list: () => [], get: () => undefined, archivedSessionIds: ['session-archived'],
+    } as never)
+    const command = new SessionCommandController(ctx, new ApiSessionAgentController(ctx), '/default')
+
+    // Undo archives the Session it replaced, so deleting one of those is the
+    // ordinary way to clear it for good.
+    expect(await command.deleteSession({ sessionId: brandString<SessionId>('session-archived') }))
+      .toEqual({ deleted: true })
+    expect(persistence.deleted).toEqual(['session-archived'])
+    expect(detach).toHaveBeenCalledWith('session-archived')
+    await ctx.fiber.dispose()
+  })
+
   it('refuses when this Host composed no session storage', async () => {
     const ctx = await baseContext()
     const command = new SessionCommandController(ctx, new ApiSessionAgentController(ctx), '/default')

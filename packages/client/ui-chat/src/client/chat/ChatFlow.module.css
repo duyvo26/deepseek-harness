@@ -1,0 +1,19 @@
+
+/* A forked Session keeps its source conversation above the inherited-history
+   divider. Tinting that stretch answers which part of a long transcript came
+   from the conversation the user undid, without adding a second header. */
+[data-chat-inherited] {
+  position: relative;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 7%, transparent);
+}
+
+[data-chat-inherited]::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 2px;
+  background: var(--dsw-alias-state-warn-primary);
+  opacity: 0.5;
+  pointer-events: none;
+}

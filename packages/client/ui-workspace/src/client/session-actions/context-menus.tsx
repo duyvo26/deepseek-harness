@@ -82,10 +82,16 @@ export function registerSessionMenus(ctx: Context, actions: Actions): void {
     id: 'copy', label: t('menu.sessionId'), icon: { key: 'workspace.copy' }, separatorBefore: true,
     run: () => actions.copySessionId(target.sessionId),
   }])
-  register('delete', 700, ['session/deleteSession'], target => allowed(target, 'session/deleteSession') ? [{
-    id: 'delete', label: t('menu.deleteSession'), icon: { key: 'workspace.deleteSession' }, danger: true,
-    run: () => { actions.requestSessionDelete(target.sessionId, target.displayTitle) },
-  }] : [])
+  register('delete', 700, ['session/deleteSession'], (target) => {
+    if (!allowed(target, 'session/deleteSession')) return []
+    return [{
+      id: 'delete', label: t('menu.deleteSession'), icon: { key: 'workspace.deleteSession' }, danger: true,
+      // An archived row is only reachable through the archived view, so its
+      // delete names that fact rather than looking unavailable.
+      ...archived(target) ? { separatorBefore: true } : {},
+      run: () => { actions.requestSessionDelete(target.sessionId, target.displayTitle) },
+    }]
+  })
   register('archive', 600, ['workspace/archiveSession', 'workspace/unarchiveSession'], (target) => {
     const restoring = archived(target)
     if (!allowed(target, restoring ? 'workspace/unarchiveSession' : 'workspace/archiveSession')) return []

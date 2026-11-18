@@ -26,6 +26,11 @@ interface ChatNodeSeatProps extends ChatNodeOwnerProps {
   readonly useChatNodeBottom: ChatFlowSlotProps['useChatNodeBottom']
   readonly deferCollapse: boolean
   readonly useGroupAction: ChatFlowSlotProps['useGroupAction']
+  /**
+   * Whether this row predates the seed a fork inherited, so the flow can mark
+   * the part of the transcript that belongs to an older conversation.
+   */
+  readonly inherited: boolean
 }
 
 type RoutedChatNodeOwner = {
@@ -48,7 +53,7 @@ function turnOf(node: ChatNode | undefined): number | undefined {
  * only seats whose visibility actually changes.
  */
 export const ChatNodeSeat = memo(function ChatNodeSeat({
-  nodeKey, groupPart, useChatNode, useChatNodeProcess, usePresentation,
+  nodeKey, groupPart, inherited, useChatNode, useChatNodeProcess, usePresentation,
   cwd, openFile, inspectCall, forkAt, undoTurn,
   loadImage, useStore, actions, renderSlot, t, useChatNodeBottom, deferCollapse, useGroupAction,
 }: ChatNodeSeatProps) {
@@ -161,6 +166,7 @@ export const ChatNodeSeat = memo(function ChatNodeSeat({
       data-chat-group-part={groupPart}
       data-chat-flow-kind={routedNode.kind}
       data-chat-turn={turn}
+      data-chat-inherited={inherited || undefined}
       data-turn-process-member={processMember || undefined}
       data-turn-process-hidden={processHidden || undefined}
     >

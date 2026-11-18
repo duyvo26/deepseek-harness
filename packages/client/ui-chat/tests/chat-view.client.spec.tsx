@@ -2159,6 +2159,12 @@ describe('ChatView', () => {
     // Undo addresses the turn, and the fork point is the event before it opened:
     // turn/start belongs to the turn being removed.
     expect(h.undoTurn).toHaveBeenCalledWith(1, 0)
+    // Undo sits right after Copy, before plugin-contributed actions and Branch:
+    // the row reads copy, undo, then the actions that change the conversation.
+    const labels = [...view.container.querySelectorAll('[data-turn-tail] button')]
+      .map(button => button.getAttribute('aria-label'))
+    const copy = labels.indexOf(h.props.t('copy'))
+    expect(labels.indexOf(h.props.t('message.undo'))).toBe(copy + 1)
   })
 
   it('keeps pending file mentions non-interactive until admission enables the reference injector', () => {

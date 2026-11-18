@@ -49,13 +49,18 @@ export const ChatFlow = memo(function ChatFlow({
     useStore, actions, renderSlot, t, useGroupAction, deferCollapse,
     cwd, openFile, inspectCall, forkAt, undoTurn, loadImage,
   }
-  const rows = entries.map((entry) => {
+  // One divider marks where a fork's inherited history ends; every row before it
+  // belongs to the conversation this Session was cut from.
+  const dividerIndex = entries.findIndex(entry => entry.kind === 'node' && entry.key.startsWith('inherited-history'))
+  const rows = entries.map((entry, index) => {
     switch (entry.kind) {
       case 'node':
         return <ChatNodeSeat {...seatProps} key={chatRenderKey(entry)} nodeKey={entry.key}
+          inherited={dividerIndex >= 0 && index < dividerIndex}
           {...entry.groupPart === undefined ? {} : { groupPart: entry.groupPart }} />
       case 'group':
         return <ChatGroupSeat {...seatProps} key={chatRenderKey(entry)} groupKey={entry.key}
+          inherited={dividerIndex >= 0 && index < dividerIndex}
           useChatGroup={useChatGroup} useGroupHeaderAction={useGroupHeaderAction} />
       default:
         return assertNever(entry)
