@@ -427,6 +427,17 @@ export interface ArchiveSessionInjected {
   archiveSession: (sessionId: SessionId) => void
   /** Remove a Session from the registry-global archived set. */
   unarchiveSession: (sessionId: SessionId) => void
+}
+
+/** Delete action share: the destructive verb and the request that confirms it. */
+export interface DeleteSessionInjected {
+  /**
+   * Ask the owner to delete a Session, which opens the confirmation that owns
+   * the destructive call.
+   * @param sessionId - Session to delete.
+   * @param displayTitle - title the confirmation names.
+   */
+  requestSessionDelete: (sessionId: SessionId, displayTitle: string) => void
   /**
    * Delete a Session and its stored log.
    *

@@ -47,7 +47,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session-status/client'
 import {
   type ArchiveSessionInjected, type DirectoryFlowSlotName, type ForkSessionInjected, menuOpenStateFactory, type PinSessionInjected,
   type SessionArchiveConfirmInjected, type SessionArchiveConfirmRequest,
-  type SessionDeleteConfirmInjected, type SessionDeleteRequest,
+  type DeleteSessionInjected, type SessionDeleteConfirmInjected, type SessionDeleteRequest,
   type RenameSessionInjected, type RowToast, type RowToastInjected, type RowToastState, type SessionRenameDialogInjected,
   type WorkspaceActionRequest, type SessionIdInjected, type WorkspaceBrowserInjected, type WorkspacePickerInjected,
 } from './contract/slots.ts'
@@ -304,8 +304,11 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
       })
     },
     unarchiveSession,
+  })
+  const deleteInjected = (): DeleteSessionInjected => ({
     // Deleting destroys the log, so the request opens a confirmation instead of
     // running here; the dialog owns the call and its failure report.
+    requestSessionDelete: (sessionId, displayTitle) => { deleteRequest.set({ sessionId, displayTitle }) },
     deleteSession: async (sessionId) => {
       const result = await sessions.deleteSession({ sessionId, stopActivity: true })
       if (!result.ok) throw new Error(result.error.message)
@@ -517,8 +520,8 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   }, SessionMenu))
   registerSessionMenus(ctx, {
     ...pinInjected(), ...archiveInjected(), ...renameInjected(), ...forkInjected(), ...sessionIdInjected(),
+    ...deleteInjected(),
     markSession,
-    requestSessionDelete: (sessionId, displayTitle) => { deleteRequest.set({ sessionId, displayTitle }) },
   })
   ctx.slots.inject('sidebar.workspaces.session.row.action', function* () {
     yield ctx.slots.register({ name: 'sidebar.workspaces.session.row.action', id: 'archive', order: 100, locale: NS, inject: archiveInjected }, ArchiveSessionRowButton)
