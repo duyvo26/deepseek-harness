@@ -101,7 +101,9 @@ describe('Workspace header actions under the page access snapshot', () => {
       const target = { kind: 'workspace' as const, value: { workspaceId: WORKSPACE, path: '/projects/project', displayTitle: 'Project' } }
       const deniedMenu = runtime.ctx.contextMenus.resolve(target)
       await deniedMenu.ready
-      expect(deniedMenu.source.getSnapshot()).toEqual([])
+      // Only the highlight submenu survives a completely denied snapshot: it
+      // is browser-local viewing state and asks no Host permission.
+      expect(deniedMenu.source.getSnapshot().map(item => item.id)).toEqual(['workspace.color/color'])
       deniedMenu.dispose()
       expect(header.getAttribute('draggable')).toBe('false')
 
@@ -121,7 +123,8 @@ describe('Workspace header actions under the page access snapshot', () => {
 
       const grantedMenu = runtime.ctx.contextMenus.resolve(target)
       await grantedMenu.ready
-      expect(grantedMenu.source.getSnapshot().map(item => item.id)).toEqual(['workspace.rename/rename'])
+      expect(grantedMenu.source.getSnapshot().map(item => item.id))
+        .toEqual(['workspace.rename/rename', 'workspace.color/color'])
       act(() => { access.replace({ type: 'baseline', owner: false, grants: [] }) })
       grantedMenu.select('workspace.rename/rename')
       expect(screen.queryByRole('dialog')).toBeNull()

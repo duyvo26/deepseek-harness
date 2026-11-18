@@ -23,6 +23,7 @@ import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
 import { abbreviateHomePath } from '@deepseek-ai/dsh-util-workspace-path'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
+import type { WorkspaceColorState } from '../workspace-colors.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
 import css from './Rows.module.css'
 
@@ -32,6 +33,9 @@ const DRAG_PREVIEW_PROPERTIES = [
   '--dsh-sidebar-label-gap',
   '--dsh-sidebar-paint-inset',
 ] as const
+
+/** No assignments, for a surface whose inject face carries no colour selector. */
+const NO_COLORS: WorkspaceColorState = {}
 
 /** The standard locale seat, prop-passed from the browser root. */
 type RowTranslate = WorkspaceBrowserProps['t']
@@ -136,7 +140,16 @@ type ProjectRowItemProps = {
   /** Host account home; POSIX home-rooted hover paths display as `~`. */
   home?: string | undefined
   t: RowTranslate
-} & Pick<WorkspaceBrowserProps, 'useWorkspaceAccess' | 'renderFactorySlot' | 'useContextMenuTarget' | 'useContextMenu'>
+} & Pick<
+  WorkspaceBrowserProps,
+  'useWorkspaceAccess' | 'renderFactorySlot' | 'useContextMenuTarget' | 'useContextMenu'
+> & {
+  /**
+   * Colour selector seat: absent when this row renders on a page composed
+   * without the plugin's inject face, which paints no highlight.
+   */
+  useWorkspaceColors?: WorkspaceBrowserProps['useWorkspaceColors']
+}
 
 /** The header actions one row offers; an absent create offers no New Session button. */
 interface ProjectRowActions {
@@ -186,7 +199,7 @@ function WorkspaceProjectRow({ workspaceId, ...props }: ProjectRowItemProps & { 
 
 function ProjectRow({
   group, containsCurrentDescendant = false, onToggle, drag: offeredDrag, home, newShortcut, t, actions,
-  renderFactorySlot, useContextMenuTarget, useContextMenu,
+  renderFactorySlot, useContextMenuTarget, useContextMenu, useWorkspaceColors,
 }: Omit<ProjectRowItemProps, 'onCreate'> & { actions: ProjectRowActions }) {
   const { getTriggerProps } = useContextMenu()
   const drag = actions.reorder ? offeredDrag : undefined
@@ -194,6 +207,12 @@ function ProjectRow({
   const row = group
   // The ungrouped bucket has no workspace title: its label is dictionary copy.
   const label = row.workspaceId === undefined ? t('group.ungrouped') : row.label
+  // The highlight is a viewing preference keyed by Workspace identity, so the
+  // ungrouped bucket and any Workspace without an assignment stay uncoloured.
+  // A surface rendered outside this plugin's inject face carries no selector;
+  // it paints no highlight rather than failing the whole tree.
+  const colors = useWorkspaceColors?.(state => state) ?? NO_COLORS
+  const color = row.workspaceId === undefined ? undefined : colors[row.workspaceId]
   const active = containsCurrentDescendant || (group.expanded && group.containsCurrent)
   const menuOpen = useContextMenuTarget(target => target?.kind === 'workspace' && target.value.workspaceId === row.workspaceId)
   const dragPreview = useRowDragPreview(css.dragPreview as string, DRAG_PREVIEW_PROPERTIES)
@@ -225,7 +244,12 @@ function ProjectRow({
         <IconTriangleRightFillRegular className={clsx(css.arrow, row.expanded && css.arrowOpen)} />
       </span>
       <span className={css.projectText}>
-        <span className={css.title}>{label}</span>
+        <span
+          className={clsx(css.title, color !== undefined && css.titleColored)}
+          {...color === undefined ? {} : { 'data-workspace-color': color }}
+        >
+          {label}
+        </span>
       </span>
       <span className={css.rowActions}>
         {workspaceMenuTarget !== undefined && (

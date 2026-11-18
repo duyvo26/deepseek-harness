@@ -7,6 +7,7 @@ import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/clie
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { allowAllAccess, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
 import { HoverCardGroup, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
@@ -42,6 +43,9 @@ type ProjectRowItemProps = ComponentProps<typeof ProjectRowItemComponent>
 
 const renderNoRowEntries: RowRenderSlot = () => null
 
+/** Colour selector hook: these header specs hold no assignment unless a case sets one. */
+const noWorkspaceColors = <T,>(select: (state: Record<string, never>) => T): T => select({})
+
 // Direct row specs use the real required Slot share, empty unless the case supplies entries.
 /**
  * Browser double-click: the second press carries detail 2 and must not disarm.
@@ -65,10 +69,11 @@ function SessionNodeItem({ renderSlot = renderNoRowEntries, onRenameRequest = ()
 // Direct header specs hold every access answer unless the case refuses one.
 function ProjectRowItem({
   useWorkspaceAccess = allowAllAccess.useWorkspaceAccess,
+  useWorkspaceColors = noWorkspaceColors,
   renderFactorySlot = renderMenuButton, useContextMenuTarget = select => select(null), ...props
-}: Omit<ProjectRowItemProps, 'useWorkspaceAccess' | 'renderFactorySlot' | 'useContextMenuTarget' | 'useContextMenu'>
-  & Partial<Pick<ProjectRowItemProps, 'useWorkspaceAccess' | 'renderFactorySlot' | 'useContextMenuTarget' | 'useContextMenu'>>) {
-  return <ProjectRowItemComponent {...props} useWorkspaceAccess={useWorkspaceAccess}
+}: Omit<ProjectRowItemProps, 'useWorkspaceAccess' | 'useWorkspaceColors' | 'renderFactorySlot' | 'useContextMenuTarget' | 'useContextMenu'>
+  & Partial<Pick<ProjectRowItemProps, 'useWorkspaceAccess' | 'useWorkspaceColors' | 'renderFactorySlot' | 'useContextMenuTarget' | 'useContextMenu'>>) {
+  return <ProjectRowItemComponent {...props} useWorkspaceAccess={useWorkspaceAccess} useWorkspaceColors={useWorkspaceColors}
     useContextMenu={props.useContextMenu ?? contextMenuHook()} renderFactorySlot={renderFactorySlot}
     useContextMenuTarget={useContextMenuTarget} />
 }
@@ -103,6 +108,52 @@ function installClipboard(writeText: (text: string) => Promise<void>): () => voi
 }
 
 describe('Workspace and Session hover handoff', () => {
+  describe('project highlight colour', () => {
+    const workspaceNode = (id: string): GroupNode => ({
+      key: id, workspaceId: wid(id), cwd: `/projects/${id}`, createdAt: 0, label: 'Important',
+      sessionCount: 0, expanded: true, containsCurrent: false, sessions: [],
+    })
+
+    it('paints an assigned colour on the project title', () => {
+      render(<ProjectRowItem
+        group={workspaceNode('colored')}
+        onToggle={vi.fn()} onCreate={vi.fn()} t={t}
+        useWorkspaceColors={select => select({ 'colored': 'red' } as never)}
+      />)
+      const title = screen.getByText('Important')
+      expect(title.getAttribute('data-workspace-color')).toBe('red')
+    })
+
+    it('leaves an unassigned project title uncoloured', () => {
+      render(<ProjectRowItem group={workspaceNode('plain')} onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)
+      expect(screen.getByText('Important').getAttribute('data-workspace-color')).toBeNull()
+    })
+
+    it('paints only the Workspace the assignment names', () => {
+      render(<>
+        <ProjectRowItem group={workspaceNode('a')} onToggle={vi.fn()} onCreate={vi.fn()} t={t}
+          useWorkspaceColors={select => select({ a: 'blue' } as never)} />
+        <ProjectRowItem group={workspaceNode('b')} onToggle={vi.fn()} onCreate={vi.fn()} t={t}
+          useWorkspaceColors={select => select({ a: 'blue' } as never)} />
+      </>)
+      const [first, second] = screen.getAllByText('Important')
+      expect(first?.getAttribute('data-workspace-color')).toBe('blue')
+      expect(second?.getAttribute('data-workspace-color')).toBeNull()
+    })
+
+    it('repaints when the assignment changes', () => {
+      const colors = createSnapshotStore<Record<string, string>>({ a: 'green' })
+      const useColors = (select: (state: Record<string, string>) => unknown): unknown => select(colors.getSnapshot())
+      const view = render(<ProjectRowItem group={workspaceNode('a')} onToggle={vi.fn()} onCreate={vi.fn()} t={t}
+        useWorkspaceColors={useColors as never} />)
+      expect(screen.getByText('Important').getAttribute('data-workspace-color')).toBe('green')
+      act(() => { colors.set({ a: 'purple' }) })
+      view.rerender(<ProjectRowItem group={workspaceNode('a')} onToggle={vi.fn()} onCreate={vi.fn()} t={t}
+        useWorkspaceColors={useColors as never} />)
+      expect(screen.getByText('Important').getAttribute('data-workspace-color')).toBe('purple')
+    })
+  })
+
   it.each(['workspace', 'session'] as const)('shares the first %s dwell across mixed rows and resets on list exit', (first) => {
     vi.useFakeTimers()
     try {

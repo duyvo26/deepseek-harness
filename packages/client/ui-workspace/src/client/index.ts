@@ -62,6 +62,12 @@ import { SessionRenameDialog } from './session-actions/RenameSession.tsx'
 import { RowActionToast } from './session-actions/RowActionToast.tsx'
 import { registerToasts } from './toast/register.ts'
 import { WorkspacePicker, WorkspacePickerFactory } from './WorkspacePicker.tsx'
+import {
+  WORKSPACE_COLOR_ICONS, WORKSPACE_COLOR_NONE_ICON_KEY, workspaceColorIconKey,
+} from './WorkspaceColorSwatch.tsx'
+import {
+  createWorkspaceColorStore, WORKSPACE_COLOR_KEYS,
+} from './workspace-colors.ts'
 import { en, ja, es, fr, de, ru, pt, zh, type WorkspaceKey } from './locales.ts'
 
 export type { StartSessionOptions, UiWorkspace } from './navigation.ts'
@@ -161,6 +167,9 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   const viewHandle = createWorkspaceViewStore()
   const viewInstance = viewHandle.create()
   const viewStore: typeof viewHandle = { ...viewHandle, create: () => viewInstance }
+  // Highlight colours are a viewing preference: one instance per plugin,
+  // shared by the menu that writes them and the rows that paint them.
+  const workspaceColors = createWorkspaceColorStore()
   const rowToast = createSnapshotStore<RowToastState | null>(null)
   let toastSeq = 0
   const notify = (toast: RowToast): void => { rowToast.set({ ...toast, seq: ++toastSeq }) }
@@ -335,7 +344,45 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
       'workspace.fork': IconBranchOutlineRegular, 'workspace.copy': IconCopyOutlineRegular,
       'workspace.markRead': IconMailReadOutlineRegular, 'workspace.markUnread': IconMailUnreadOutlineRegular,
     })) yield ctx.slots.register({ name: 'contextMenu.icon', key }, Icon)
+    for (const [key, Swatch] of WORKSPACE_COLOR_ICONS) {
+      yield ctx.slots.register({ name: 'contextMenu.icon', key }, Swatch)
+    }
   })
+  /**
+   * The highlight submenu: one entry per palette colour plus a clearing entry,
+   * with the current colour marked. Viewing state, so it stays available
+   * without a Host write permission.
+   */
+  ctx.effect(() => ctx.contextMenus.register({
+    id: 'workspace.color', target: 'workspace', order: 150,
+    observe: () => [workspaceColors.store],
+    resolve: ({ workspaceId }) => {
+      const current = workspaceColors.store.getSnapshot()[workspaceId]
+      const menuCopy = ctx.locale.bind(NS)
+      return [{
+        id: 'color',
+        label: menuCopy('menu.color'),
+        icon: { key: current === undefined ? WORKSPACE_COLOR_NONE_ICON_KEY : workspaceColorIconKey(current) },
+        children: [
+          ...WORKSPACE_COLOR_KEYS.map(color => ({
+            id: `color.${color}`,
+            label: menuCopy(`menu.color.${color}`),
+            icon: { key: workspaceColorIconKey(color) },
+            ...current === color ? { disabled: true } : {},
+            run: () => { workspaceColors.setColor(workspaceId, color) },
+          })),
+          {
+            id: 'color.clear',
+            label: menuCopy('menu.color.clear'),
+            icon: { key: WORKSPACE_COLOR_NONE_ICON_KEY },
+            separatorBefore: current !== undefined,
+            ...current === undefined ? { disabled: true } : {},
+            run: () => { workspaceColors.setColor(workspaceId, undefined) },
+          },
+        ],
+      }]
+    },
+  }), 'workspace: colour menu action')
   ctx.effect(() => ctx.contextMenus.register({
     id: 'workspace.rename', target: 'workspace', order: 100,
     resolve: ({ workspaceId, displayTitle }) => ctx.remoteAccess.source('workspace', workspaceId, 'workspace/rename').getSnapshot()
@@ -369,7 +416,8 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
     closeAddWorkspace: shortcutControls.closeAdd,
     setDirectoryBusy: shortcutControls.directoryBusy,
     hooks: { workspaceActionRequest, contextMenuTarget: ctx.contextMenus.active, directoryFlow: browserFlowSource, hostInfo,
-      workspaceShortcuts: shortcutControls.state, shortcuts: ctx.shortcuts.catalog },
+      workspaceShortcuts: shortcutControls.state, shortcuts: ctx.shortcuts.catalog,
+      workspaceColors: workspaceColors.store },
   })
   const pickerInjected = (directoryFlow: HostObservable<boolean>) => (): WorkspacePickerInjected => ({
     createWorkspace: input => workspaces.create(input),

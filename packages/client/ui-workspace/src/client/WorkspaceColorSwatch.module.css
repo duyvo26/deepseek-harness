@@ -1,0 +1,39 @@
+/* Palette swatches shown as context-menu icons. Every colour resolves through
+ * a theme state token, so one declaration serves both themes. */
+
+.swatch {
+  display: block;
+  box-sizing: border-box;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.swatch[data-workspace-color='red'] {
+  background: var(--dsw-alias-state-error-primary);
+}
+
+.swatch[data-workspace-color='orange'] {
+  background: var(--dsw-alias-state-warn-primary);
+}
+
+.swatch[data-workspace-color='yellow'] {
+  background: var(--dsw-alias-state-warn-secondary);
+}
+
+.swatch[data-workspace-color='green'] {
+  background: var(--dsw-alias-state-success-primary);
+}
+
+.swatch[data-workspace-color='blue'] {
+  background: var(--dsw-alias-state-business-primary);
+}
+
+.swatch[data-workspace-color='purple'] {
+  background: var(--dsw-alias-trajectory-accent);
+}
+
+/* The clearing entry reads as "no fill yet", not as another colour. */
+.none {
+  border: 1.5px solid var(--dsw-alias-border-l3);
+}

@@ -254,7 +254,7 @@ type SessionTreeProps = Pick<
   WorkspaceBrowserProps,
   'useSessionStatus' | 'startSession' | 'open' | 'renderFactorySlot' | 'useContextMenuTarget' | 'useContextMenu'
   | 'insertWorkspaceBefore' | 't' | 'usePanelInfo'
-  | 'useSessionAccess' | 'useWorkspaceAccess'
+  | 'useSessionAccess' | 'useWorkspaceAccess' | 'useWorkspaceColors'
 > & PropsRenderSlots<
   | 'sidebar.workspaces.session.row.action'
   | 'sidebar.session.row.trailing'
@@ -314,7 +314,7 @@ function EmptySessions({ rowState, onLeaveArchivedOnly, t }: Pick<SessionTreePro
 function SessionTree({
   list, useSessionStatus, startSession, open, workspaces, ungroupedSessionIds,
   rowState, onLeaveArchivedOnly,
-  workspaceReady, animationResetKey, usePanelInfo, useSessionAccess, useWorkspaceAccess,
+  workspaceReady, animationResetKey, usePanelInfo, useSessionAccess, useWorkspaceAccess, useWorkspaceColors,
   onSessionRenameRequest,
   renderSlot, renderFactorySlot, useContextMenuTarget, useContextMenu,
   insertWorkspaceBefore,
@@ -555,7 +555,7 @@ function SessionTree({
           newShortcut={shortcuts.find(row => row.id === 'session.new')}
           group={group}
           renderFactorySlot={renderFactorySlot} useContextMenu={useContextMenu} useContextMenuTarget={useContextMenuTarget}
-          useWorkspaceAccess={useWorkspaceAccess}
+          useWorkspaceAccess={useWorkspaceAccess} useWorkspaceColors={useWorkspaceColors}
           containsCurrentDescendant={currentAncestors.has(group.key)}
           home={home}
           t={t}
@@ -912,6 +912,7 @@ export function WorkspaceBrowser({
   useSessionStatus,
   useSessionAccess,
   useWorkspaceAccess,
+  useWorkspaceColors,
   useWorkspaces,
   useStore,
   actions,
@@ -1410,7 +1411,7 @@ export function WorkspaceBrowser({
             : (
               <SessionTree
                 useSessionAccess={useSessionAccess}
-                useWorkspaceAccess={useWorkspaceAccess}
+                useWorkspaceAccess={useWorkspaceAccess} useWorkspaceColors={useWorkspaceColors}
                 usePanelInfo={usePanelInfo}
                 list={list}
                 shortcuts={shortcuts}

@@ -187,6 +187,37 @@
   line-height: 20px;
 }
 
+/* A project highlight paints the title itself. Weight stays 500 so the colour
+ * is the only emphasis and the row does not reflow. */
+.titleColored {
+  font-weight: 500;
+}
+
+.titleColored[data-workspace-color='red'] {
+  color: var(--dsw-alias-state-error-primary);
+}
+
+.titleColored[data-workspace-color='orange'] {
+  color: var(--dsw-alias-state-warn-primary);
+}
+
+.titleColored[data-workspace-color='yellow'] {
+  color: var(--dsw-alias-state-warn-primary);
+  filter: saturate(0.75) brightness(1.1);
+}
+
+.titleColored[data-workspace-color='green'] {
+  color: var(--dsw-alias-state-success-primary);
+}
+
+.titleColored[data-workspace-color='blue'] {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.titleColored[data-workspace-color='purple'] {
+  color: var(--dsw-alias-trajectory-accent);
+}
+
 .renameInput {
   min-width: 0;
   font-size: 14px;
