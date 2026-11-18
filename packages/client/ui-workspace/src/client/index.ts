@@ -305,24 +305,22 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
     },
     unarchiveSession,
   })
+  // Deleting destroys the log, so the menu raises a request and the dialog runs
+  // the call; both share this one implementation.
+  const deleteSession = async (sessionId: SessionId): Promise<void> => {
+    const result = await sessions.deleteSession({ sessionId, stopActivity: true })
+    if (!result.ok) throw new Error(result.error.message)
+  }
   const deleteInjected = (): DeleteSessionInjected => ({
-    // Deleting destroys the log, so the request opens a confirmation instead of
-    // running here; the dialog owns the call and its failure report.
     requestSessionDelete: (sessionId, displayTitle) => { deleteRequest.set({ sessionId, displayTitle }) },
-    deleteSession: async (sessionId) => {
-      const result = await sessions.deleteSession({ sessionId, stopActivity: true })
-      if (!result.ok) throw new Error(result.error.message)
-    },
+    deleteSession,
   })
   installWorkspaceShortcuts(ctx, uiWorkspace, shortcutControls, archiveInjected().archiveSession,
     (reason) => { notify({ kind: 'shortcutForkFailed', reason }) }, markSession)
   const deleteConfirmInjected = (): SessionDeleteConfirmInjected => ({
     hooks: { deleteRequest },
     settleSessionDelete: () => { deleteRequest.set(null) },
-    deleteSession: async (sessionId) => {
-      const result = await sessions.deleteSession({ sessionId, stopActivity: true })
-      if (!result.ok) throw new Error(result.error.message)
-    },
+    deleteSession,
   })
   const archiveConfirmInjected = (): SessionArchiveConfirmInjected => ({
     hooks: { archiveRequest },

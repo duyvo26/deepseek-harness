@@ -31,6 +31,7 @@ import {
   ArchiveSessionRowButton, SessionArchiveConfirmDialog,
 } from '../src/client/session-actions/ArchiveSession.tsx'
 import { PinSessionRowButton } from '../src/client/session-actions/PinSession.tsx'
+import { SessionDeleteDialog } from '../src/client/rows/SessionDeleteDialog.tsx'
 import { SessionRenameDialog } from '../src/client/session-actions/RenameSession.tsx'
 import { RowActionToast } from '../src/client/session-actions/RowActionToast.tsx'
 import { createWorkspaceViewStore } from '../src/client/stores.ts'
@@ -709,5 +710,52 @@ describe('RowActionToast', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+describe('SessionDeleteDialog', () => {
+  /** The delete confirmation over a test-owned request source. */
+  function deleteDialog(deleteSession: (sessionId: SessionId) => Promise<void>) {
+    const request = createSnapshotStore<{ sessionId: SessionId; displayTitle: string } | null>(null)
+    const settleSessionDelete = vi.fn(() => { request.set(null) })
+    render(
+      <SessionDeleteDialog
+        {...overlay}
+        useDeleteRequest={bindSnapshotSelector(request)}
+        settleSessionDelete={settleSessionDelete}
+        deleteSession={deleteSession}
+      />,
+    )
+    const ask = (sessionId: string, displayTitle: string): void => {
+      act(() => { request.set({ sessionId: sid(sessionId), displayTitle }) })
+    }
+    return { settleSessionDelete, ask }
+  }
+
+  it('renders nothing until a delete is requested', () => {
+    deleteDialog(vi.fn(async () => {}))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('names the Session, warns that the action cannot be undone, and deletes on confirm', async () => {
+    const deleteSession = vi.fn(async () => {})
+    const { ask, settleSessionDelete } = deleteDialog(deleteSession)
+    ask('gone', 'Old chat')
+    const dialog = screen.getByRole('dialog')
+    expect(dialog.textContent).toContain('删除会话')
+    // The consequence is stated before the destructive call, not after.
+    expect(dialog.textContent).toContain('无法撤销')
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '删除' })) })
+    expect(deleteSession).toHaveBeenCalledWith('gone')
+    expect(settleSessionDelete).toHaveBeenCalled()
+  })
+
+  it('reports a refused delete instead of closing', async () => {
+    const deleteSession = vi.fn(async () => { throw new Error('session/active') })
+    const { ask, settleSessionDelete } = deleteDialog(deleteSession)
+    ask('busy', 'Busy chat')
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: '删除' })) })
+    expect(settleSessionDelete).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert').textContent).toBe('session/active')
   })
 })
