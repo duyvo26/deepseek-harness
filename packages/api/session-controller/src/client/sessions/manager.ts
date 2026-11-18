@@ -539,9 +539,10 @@ export class SessionManager {
       sessionId: opts.sessionId,
       ...opts.stopActivity === true ? { stopActivity: true } : {},
     })
-    // The Host's next list read drops the row; a local removal here would race
-    // the projection that other views still read.
-    if (result.ok) await this.refreshList()
+    // Drop the row through the removal path other views already follow, so the
+    // row leaves every grouping at once instead of waiting for a list pull that
+    // would render it under the ungrouped bucket in the meantime.
+    if (result.ok && result.value.deleted) this.handleSessionRemoved(opts.sessionId)
     return result
   }
 

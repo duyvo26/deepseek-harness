@@ -248,12 +248,17 @@ export class SessionCommandController {
         sessionId: request.sessionId,
       })
     }
-    // Detach from its Workspace first: a record naming a deleted Session would
-    // project an empty row no reader can open.
-    await this.ctx.workspaceRegistry.detachSession(request.sessionId)
     const stored = await persistence.stat(request.sessionId)
-    if (stored === undefined) return { deleted: false }
+    if (stored === undefined) {
+      // Nothing to remove, but a stale membership would still project a row.
+      await this.ctx.workspaceRegistry.detachSession(request.sessionId)
+      return { deleted: false }
+    }
+    // Remove the artifact before detaching: a Session that left its Workspace
+    // while its log still existed would surface in the ungrouped bucket for one
+    // list read, which reads as "archived into nowhere" rather than deleted.
     await persistence.delete(request.sessionId)
+    await this.ctx.workspaceRegistry.detachSession(request.sessionId)
     return { deleted: true }
   }
 

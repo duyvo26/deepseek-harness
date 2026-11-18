@@ -59,6 +59,29 @@ describe('deleteSession', () => {
     await ctx.fiber.dispose()
   })
 
+  it('removes the artifact before detaching, so no list read sees it ungrouped', async () => {
+    const ctx = await baseContext()
+    const order: string[] = []
+    const persistence = {
+      stat: async () => ({ header: { id: 'session-order' }, revision: 'test' }),
+      delete: async () => { order.push('artifact') },
+      list: async () => [],
+    } as never
+    ctx.provide('sessionPersistence', persistence)
+    ctx.provide('workspaceRegistry', {
+      detachSession: async () => { order.push('detach') },
+      list: () => [], get: () => undefined, archivedSessionIds: [],
+    } as never)
+    const command = new SessionCommandController(ctx, new ApiSessionAgentController(ctx), '/default')
+
+    await command.deleteSession({ sessionId: brandString<SessionId>('session-order') })
+
+    // A Session that left its Workspace while its log still existed would show
+    // in the ungrouped bucket for the next read.
+    expect(order).toEqual(['artifact', 'detach'])
+    await ctx.fiber.dispose()
+  })
+
   it('reports nothing removed for a Session this store does not hold', async () => {
     const ctx = await baseContext()
     const persistence = persistenceDouble([])
