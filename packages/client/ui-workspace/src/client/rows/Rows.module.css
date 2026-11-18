@@ -187,35 +187,45 @@
   line-height: 20px;
 }
 
-/* A project highlight paints the title itself. Weight stays 500 so the colour
- * is the only emphasis and the row does not reflow. */
+/* A project highlight paints the title and the leading folder glyph. One
+ * selector list covers both so the two can never drift; weight stays 500 so
+ * the colour is the only emphasis and the row does not reflow. The chevron
+ * follows the same colour because it replaces the folder on hover. */
+.titleColored,
+.folderColored,
+.chevronColored {
+  color: var(--workspace-color-accent);
+}
+
 .titleColored {
   font-weight: 500;
 }
 
-.titleColored[data-workspace-color='red'] {
-  color: var(--dsw-alias-state-error-primary);
+/* Resolve the palette entry once per element, so every consumer above reads
+ * the same token and an unknown value simply leaves the inherited colour. */
+[data-workspace-color='red'] {
+  --workspace-color-accent: var(--dsw-alias-state-error-primary);
 }
 
-.titleColored[data-workspace-color='orange'] {
-  color: var(--dsw-alias-state-warn-primary);
+[data-workspace-color='orange'] {
+  --workspace-color-accent: var(--dsw-alias-state-warn-primary);
 }
 
-.titleColored[data-workspace-color='yellow'] {
-  color: var(--dsw-alias-state-warn-primary);
+[data-workspace-color='yellow'] {
+  --workspace-color-accent: var(--dsw-alias-state-warn-primary);
   filter: saturate(0.75) brightness(1.1);
 }
 
-.titleColored[data-workspace-color='green'] {
-  color: var(--dsw-alias-state-success-primary);
+[data-workspace-color='green'] {
+  --workspace-color-accent: var(--dsw-alias-state-success-primary);
 }
 
-.titleColored[data-workspace-color='blue'] {
-  color: var(--dsw-alias-state-business-primary);
+[data-workspace-color='blue'] {
+  --workspace-color-accent: var(--dsw-alias-state-business-primary);
 }
 
-.titleColored[data-workspace-color='purple'] {
-  color: var(--dsw-alias-trajectory-accent);
+[data-workspace-color='purple'] {
+  --workspace-color-accent: var(--dsw-alias-trajectory-accent);
 }
 
 .renameInput {

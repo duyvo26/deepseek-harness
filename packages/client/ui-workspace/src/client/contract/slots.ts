@@ -303,6 +303,12 @@ export type WorkspaceBrowserInjected = {
    * then the recent Workspace, or clear into the New Session view.
    */
   startSession: (workspaceId?: WorkspaceId, options?: StartSessionOptions) => void
+  /**
+   * Open a Session in the shared project-less Workspace, registering it on
+   * first use. This is the "chat without a project" entry: the page names one
+   * harness-home directory, so the user picks nothing.
+   */
+  startProjectlessSession: (options?: StartSessionOptions) => void
   /** Open a real Session. */
   open: (sessionId: SessionId) => void
   /**

@@ -24,6 +24,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
 import type { DraftInitializationOptions } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { RowToast } from './contract/slots.ts'
 import { pinOrderAccounts, pinOrderSource } from './pin-order.ts'
+import { ensureScratchWorkspace } from './scratch-workspace.ts'
 import { RecentSessionViews } from './recent-views.ts'
 import type { WorkspaceViewStoreActions } from './stores.ts'
 
@@ -91,6 +92,18 @@ export interface UiWorkspace {
    * whether existing text or attachments are kept, replaced, or followed by the prompt.
    */
   startSession(workspaceId?: WorkspaceId, options?: StartSessionOptions): void
+  /**
+   * Open a Session in the shared project-less Workspace, registering it on
+   * first use.
+   *
+   * The Session still names a directory — tools resolve against it — but the
+   * user picks nothing: the page owns one harness-home directory for exactly
+   * this case. Failure is reported through the Workspace notice like any other
+   * refused creation.
+   * @param options - initial content and the blank's preset.
+   * @returns completion; resolves once the Session is opening or the attempt failed.
+   */
+  startProjectlessSession(options?: StartSessionOptions): Promise<void>
   /**
    * Archive a Session and clear it when it is the current selection.
    * @param sessionId - Session to archive.
@@ -374,6 +387,20 @@ class UiWorkspaceService extends Service implements UiWorkspace {
     void opening.catch(
       (reason: unknown) => { console.warn('new session failed:', reason) },
     )
+  }
+
+  async startProjectlessSession(options: StartSessionOptions = {}): Promise<void> {
+    const hostHome = this.ctx.get('remote')?.$host.home
+    const scratch = await ensureScratchWorkspace(
+      this.workspaces, hostHome, this.ctx.locale.bind('workspace')('scratch.title'),
+    )
+    if (scratch === undefined) {
+      // Host facts have not arrived yet, so the directory this page would use
+      // is still unknown; refusing beats guessing a path that does not exist.
+      this.notify({ kind: 'createFailed', message: this.ctx.locale.bind('workspace')('scratch.unavailable') })
+      return
+    }
+    this.startSession(scratch.workspaceId, options)
   }
 
   private prepareDraft(binding: SessionBinding, options: DraftInitializationOptions): void {

@@ -20,7 +20,7 @@ import { WorkspaceDialogs } from './WorkspaceDialogs.tsx'
 import {
   AnimatedRows, HoverCardGroup, IconArchiveCheckOutlineRegular, IconArchiveOffOutlineRegular, IconArchiveOutlineRegular,
   IconChevronsUpDownOutlineRegular, IconClockOutlineRegular, IconCloseFillRegular,
-  IconFlatListOutlineRegular, IconFolderCloseRegular, IconProjectAddOutlineRegular,
+  IconFlatListOutlineRegular, IconFolderCloseRegular, IconNewChatOutlineRegular, IconProjectAddOutlineRegular,
   IconQueueOutlineRegular, IconSearchOutlineRegular, IconSlidersTwoOutlineRegular,
   IconWorkspaceTreeOutlineRegular, Menu, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -917,6 +917,7 @@ export function WorkspaceBrowser({
   useStore,
   actions,
   startSession,
+  startProjectlessSession,
   open,
   requestSessionRename,
   notifyArchivedNotOpenable,
@@ -942,6 +943,8 @@ export function WorkspaceBrowser({
   const shortcuts = useShortcuts(rows => rows)
   const searchShortcut = shortcuts.find(row => row.id === 'session.search')
   const addShortcut = shortcuts.find(row => row.id === 'workspace.add')
+  // The global chat opens the same New Session draft, so it shows the same shortcut.
+  const newSessionShortcut = shortcuts.find(row => row.id === 'session.new')
   const shortcutState = useWorkspaceShortcuts(state => state)
   // Ordering remains live while the rail or search replaces the list body.
   const list = useSessions(state => state)
@@ -1306,6 +1309,19 @@ export function WorkspaceBrowser({
               t={t}
             />
           )}
+          {/* One global chat entry: it opens a Session in the shared
+              project-less Workspace, so a user who is not working in a
+              project still has somewhere to type. */}
+          <Tooltip label={t('session.new.global')} shortcutKeys={newSessionShortcut?.keys} side="bottom" delayMs={500} portal>
+            <button
+              type="button"
+              className={css.iconButton}
+              aria-label={t('session.new.global')}
+              onClick={() => { startProjectlessSession() }}
+            >
+              <IconNewChatOutlineRegular size={wide ? 16 : 18} />
+            </button>
+          </Tooltip>
           {/* Adding is the button's one action, so a composition with no
               picking affordance has nothing to offer here: the region hides the
               button rather than leaving a dead one in the header. */}

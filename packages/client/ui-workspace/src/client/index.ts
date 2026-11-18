@@ -68,6 +68,7 @@ import {
 import {
   createWorkspaceColorStore, WORKSPACE_COLOR_KEYS,
 } from './workspace-colors.ts'
+import { ensureScratchWorkspace, isScratchWorkspace } from './scratch-workspace.ts'
 import { en, ja, es, fr, de, ru, pt, zh, type WorkspaceKey } from './locales.ts'
 
 export type { StartSessionOptions, UiWorkspace } from './navigation.ts'
@@ -206,6 +207,21 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   }
   const pickerFlowSource = flowSource('conversation.hero.workspace.directoryFlow')
   const factoryFlowSource = flowSource('workspace.picker.directoryFlow')
+  // Register the shared project-less Workspace as soon as host facts name the
+  // home, so the Global project is present in the sidebar before any chat needs
+  // it. A failure is silent: the row is created on first use anyway, and a
+  // startup notice for a convenience row would be noise.
+  ctx.effect(() => {
+    const ensure = (): void => {
+      if (hostInfo.getSnapshot().home === undefined) return
+      const title = ctx.locale.bind(NS)('scratch.title')
+      void ensureScratchWorkspace(workspaces, hostInfo.getSnapshot().home, title).catch((reason: unknown) => {
+        console.warn('global workspace unavailable:', reason)
+      })
+    }
+    ensure()
+    return ctx.on('connection/reset', ensure)
+  }, 'ui-workspace: global project')
   const openSession: WorkspaceBrowserInjected['open'] = (sessionId) => {
     uiWorkspace.openSession(sessionId)
   }
@@ -330,6 +346,10 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
     hooks: { toast: rowToast },
     dismissToast: () => { rowToast.set(null) },
   })
+  const isScratchWorkspaceById = (workspaceId: WorkspaceId): boolean => {
+    const row = workspaces.list.getSnapshot().items.find(item => item.workspaceId === workspaceId)
+    return row !== undefined && isScratchWorkspace(row, hostInfo.getSnapshot().home)
+  }
   const workspaceActionRequest = createSnapshotStore<WorkspaceActionRequest | null>(null)
   const requestWorkspaceAction = (workspaceId: WorkspaceId, displayTitle: string, action: 'rename' | 'delete'): void => {
     const workspace = workspaces.list.getSnapshot().items.find(row => row.workspaceId === workspaceId)
@@ -390,22 +410,37 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   }), 'workspace: rename menu action')
   ctx.effect(() => ctx.contextMenus.register({
     id: 'workspace.delete', target: 'workspace', order: 300,
-    resolve: ({ workspaceId, displayTitle }) => ctx.remoteAccess.source('workspace', workspaceId, 'workspace/delete').getSnapshot()
-      ? [{ id: 'delete', label: ctx.locale.bind(NS)('delete.workspace'), icon: { key: 'workspace.delete' }, danger: true, separatorBefore: true,
-        run: () => { requestWorkspaceAction(workspaceId, displayTitle, 'delete') } }] : [],
+    resolve: ({ workspaceId, displayTitle }) => {
+      // The shared project-less Workspace backs every global chat: removing its
+      // registration would strand them under Ungrouped, so it offers no delete.
+      if (isScratchWorkspaceById(workspaceId)) return []
+      return ctx.remoteAccess.source('workspace', workspaceId, 'workspace/delete').getSnapshot()
+        ? [{ id: 'delete', label: ctx.locale.bind(NS)('delete.workspace'), icon: { key: 'workspace.delete' }, danger: true, separatorBefore: true,
+          run: () => { requestWorkspaceAction(workspaceId, displayTitle, 'delete') } }] : []
+    },
   }), 'workspace: delete menu action')
   const browserInjected = (): WorkspaceBrowserInjected => ({
     settleWorkspaceAction: () => { workspaceActionRequest.set(null) },
     // Explicit group actions keep their target; unscoped New Session inherits
     // the current Session Workspace before the recent-Workspace fallback.
     startSession: (workspaceId, options) => { uiWorkspace.startSession(workspaceId, options) },
+    startProjectlessSession: (options) => { void uiWorkspace.startProjectlessSession(options) },
     open: openSession,
     searchSessions,
     searchResultLimit: sessions.searchResultLimit,
     requestSessionRename,
     notifyArchivedNotOpenable: () => { notify({ kind: 'archivedNotOpenable' }) },
     renameWorkspace: async (workspaceId, title) => { await workspaces.rename(workspaceId, title) },
-    deleteWorkspace: async (workspaceId) => { await workspaces.delete(workspaceId) },
+    // The global Workspace backs every project-less chat; the delete entry is
+    // already withheld from its menu, and this refuses the same call reached
+    // another way (a dialog still open while the row became global).
+    deleteWorkspace: async (workspaceId) => {
+      if (isScratchWorkspaceById(workspaceId)) {
+        notify({ kind: 'createFailed', message: ctx.locale.bind(NS)('scratch.protected') })
+        return
+      }
+      await workspaces.delete(workspaceId)
+    },
     insertWorkspaceBefore: async (workspaceId, beforeWorkspaceId) => {
       await workspaces.insertBefore(workspaceId, beforeWorkspaceId)
     },

@@ -124,6 +124,18 @@ describe('Workspace and Session hover handoff', () => {
       expect(title.getAttribute('data-workspace-color')).toBe('red')
     })
 
+    it('paints the folder glyph and its hover chevron with the same colour', () => {
+      const { container } = render(<ProjectRowItem
+        group={workspaceNode('colored')}
+        onToggle={vi.fn()} onCreate={vi.fn()} t={t}
+        useWorkspaceColors={select => select({ 'colored': 'green' } as never)}
+      />)
+      // The title, the leading folder, and the hover chevron each carry the
+      // palette entry, so one colour reaches every part of the row.
+      const carriers = [...container.querySelectorAll('[data-workspace-color]')]
+      expect(carriers.map(el => el.getAttribute('data-workspace-color'))).toEqual(['green', 'green', 'green'])
+    })
+
     it('leaves an unassigned project title uncoloured', () => {
       render(<ProjectRowItem group={workspaceNode('plain')} onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)
       expect(screen.getByText('Important').getAttribute('data-workspace-color')).toBeNull()

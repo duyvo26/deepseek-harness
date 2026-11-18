@@ -139,6 +139,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     useStore: bindSnapshotSelector(store),
     actions: store.actions,
     startSession: vi.fn(),
+    startProjectlessSession: vi.fn(),
     open: vi.fn(),
     searchSessions: vi.fn(async () => ({ items: [], hasMore: false })),
     searchResultLimit: 20,
@@ -191,6 +192,26 @@ describe('WorkspaceBrowser', () => {
         label: '工作区“alpha”的操作', className: rowCss.iconButton,
       })
     }
+  })
+
+  it('opens a global chat from the section header without naming a project', () => {
+    const startProjectlessSession = vi.fn()
+    const startSession = vi.fn()
+    const browser = mount({ startProjectlessSession, startSession })
+    fireEvent.click(screen.getByRole('button', { name: '新建全局会话' }))
+    // The global entry names no Workspace: the page resolves the shared one.
+    expect(startProjectlessSession).toHaveBeenCalledTimes(1)
+    expect(startSession).not.toHaveBeenCalled()
+    browser.view.unmount()
+  })
+
+  it('keeps the global chat entry available when no project exists yet', () => {
+    const startProjectlessSession = vi.fn()
+    const browser = mount({ startProjectlessSession, useWorkspaces: hook(workspaceState([])) })
+    // This is the case the entry exists for: nothing to attach a Session to.
+    fireEvent.click(screen.getByRole('button', { name: '新建全局会话' }))
+    expect(startProjectlessSession).toHaveBeenCalledTimes(1)
+    browser.view.unmount()
   })
 
   it('binds the list area as the section scroller only while the sidebar is wide', () => {

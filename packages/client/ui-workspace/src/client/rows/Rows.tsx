@@ -237,10 +237,15 @@ function ProjectRow({
         }}
       onDragEnd={() => { if (dragPreview.clear()) drag?.end() }}
     >
-      <span className={clsx(css.slot, css.folder, active && css.folderActive)}>
+      <span
+        className={clsx(css.slot, css.folder, active && css.folderActive, color !== undefined && css.folderColored)}
+        {...color === undefined ? {} : { 'data-workspace-color': color }}
+      >
         {row.expanded ? <IconFolderOpenRegular /> : <IconFolderCloseRegular />}
       </span>
-      <span className={clsx(css.slot, css.chevron)}>
+      <span className={clsx(css.slot, css.chevron, color !== undefined && css.chevronColored)}
+        {...color === undefined ? {} : { 'data-workspace-color': color }}
+      >
         <IconTriangleRightFillRegular className={clsx(css.arrow, row.expanded && css.arrowOpen)} />
       </span>
       <span className={css.projectText}>
