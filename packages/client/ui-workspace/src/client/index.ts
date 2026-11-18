@@ -54,6 +54,9 @@ import {
 import { createWorkspaceShortcutControls, installWorkspaceShortcuts } from './shortcuts.ts'
 import { UiWorkspaceService } from './navigation.ts'
 import { createWorkspaceViewStore } from './stores.ts'
+import {
+  ArchivedSessionsSection, type ArchivedSessionRow, type ArchivedSessionsSectionInjected,
+} from './rows/ArchivedSessionsSection.tsx'
 import { SessionDeleteDialog } from './rows/SessionDeleteDialog.tsx'
 import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
 import { ArchiveSessionRowButton, SessionArchiveConfirmDialog } from './session-actions/ArchiveSession.tsx'
@@ -234,6 +237,22 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   // Registry-global sets as Sets, rebuilt only when the Workspace snapshot changes.
   const pinnedSet = derive(workspaces.list, snapshot => new Set<SessionId>(snapshot.pinnedSessionIds))
   const archivedSet = derive(workspaces.list, snapshot => new Set<SessionId>(snapshot.archivedSessionIds))
+  const archivedSessions = {
+    getSnapshot: (): readonly ArchivedSessionRow[] => {
+      const archived = workspaces.list.getSnapshot().archivedSessionIds
+      const byId = sessions.list.getSnapshot().byId
+      return archived.map(sessionId => ({
+        sessionId,
+        displayTitle: byId[sessionId]?.displayTitle ?? sessionId,
+        updatedAt: String(byId[sessionId]?.updatedAt ?? ''),
+      }))
+    },
+    subscribe: (listener: () => void): (() => void) => {
+      const stopArchived = workspaces.list.subscribe(listener)
+      const stopSessions = sessions.list.subscribe(listener)
+      return () => { stopArchived(); stopSessions() }
+    },
+  }
   const markSession = (sessionId: SessionId, unread: boolean): void => {
     ctx.uiSession.sessionStatus.mark(sessionId, unread).catch(() => { notify({ kind: 'readingFailed' }) })
   }
@@ -317,6 +336,19 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   })
   installWorkspaceShortcuts(ctx, uiWorkspace, shortcutControls, archiveInjected().archiveSession,
     (reason) => { notify({ kind: 'shortcutForkFailed', reason }) }, markSession)
+  const archivedSectionInjected = (): ArchivedSessionsSectionInjected => ({
+    hooks: { archivedSessions },
+    unarchive: async (sessionId) => { await uiWorkspace.unarchiveSession(sessionId) },
+    deleteSession,
+  })
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
+    id: 'archived-sessions',
+    order: 40,
+    label: () => ctx.locale.bind(NS)('archive.nav'),
+    locale: NS,
+    inject: archivedSectionInjected,
+  }, ArchivedSessionsSection))
   const deleteConfirmInjected = (): SessionDeleteConfirmInjected => ({
     hooks: { deleteRequest },
     settleSessionDelete: () => { deleteRequest.set(null) },

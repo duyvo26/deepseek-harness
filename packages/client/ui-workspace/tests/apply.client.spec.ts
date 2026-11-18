@@ -180,7 +180,9 @@ async function bench(access: 'fake' | 'static' = 'fake') {
   }
 }
 
-type HoleName = 'sidebar.workspaces' | 'conversation.hero.workspace' | 'conversation.empty.workspace' | 'shell.overlay'
+type HoleName =
+  | 'sidebar.workspaces' | 'conversation.hero.workspace' | 'conversation.empty.workspace'
+  | 'shell.overlay' | 'settings.section'
 
 const MENU_ITEM = 'sidebar.workspaces.session.menu.item'
 const ROW_ACTION = 'sidebar.workspaces.session.row.action'
@@ -189,7 +191,11 @@ type RowListName = typeof MENU_ITEM | typeof ROW_ACTION | 'shell.overlay'
 /** Declare any subset of the holes with a single root registration ('root' is a single slot); the overlay is a list. */
 function declare(slots: SlotRegistry, ...names: HoleName[]): () => void {
   const children = Object.fromEntries([...names, 'contextMenu.content', 'contextMenu.icon'].map(name => [
-    name, { kind: name === 'shell.overlay' ? 'list' : name.startsWith('contextMenu.') ? 'keyed' : 'single', scope: 'root',
+    name, {
+      kind: name === 'shell.overlay' || name === 'settings.section'
+        ? 'list'
+        : name.startsWith('contextMenu.') ? 'keyed' : 'single',
+      scope: 'root',
       ...name === 'contextMenu.icon' ? { inline: true } : {},
       ...name === 'sidebar.workspaces' ? { inject: SECTION_INJECT } : {} },
   ]))
@@ -315,7 +321,7 @@ describe('ui-workspace apply', () => {
 
   it('declares the two Session row lists and registers the shipped actions and overlay surfaces into them', async () => {
     const b = await bench()
-    declare(b.slots, 'sidebar.workspaces', 'shell.overlay')
+    declare(b.slots, 'sidebar.workspaces', 'shell.overlay', 'settings.section')
     await b.ctx.plugin({ inject: [...inject], apply }, syncedConfig({ recentViewLimit: 10 })).await()
     // The menu list binds the row's open state into every entry's hook; the
     // hover-button list carries no common face.
@@ -323,6 +329,8 @@ describe('ui-workspace apply', () => {
       kind: 'list', scope: 'root', inject: { hooks: { menuOpenState: menuOpenStateFactory, shortcuts: b.ctx.shortcuts.catalog } },
     })
     expect(b.slots.spec(ROW_ACTION)).toEqual({ kind: 'list', scope: 'root' })
+    // Archived Sessions are managed from Settings now that the sidebar hides them.
+    expect(b.slots.entries('settings.section').map(entry => entry.options.id)).toContain('archived-sessions')
     expect(b.slots.spec('sidebar.session.row.trailing')).toEqual({ kind: 'list', scope: 'root', inline: true })
     expect(b.slots.spec('sidebar.session.row.leading')).toEqual({ kind: 'list', scope: 'root', inline: true })
 
@@ -367,7 +375,7 @@ describe('ui-workspace apply', () => {
   it('marks cold Sessions silently and reports only failed writes', async () => {
     const b = await bench()
     onTestFinished(() => b.ctx.fiber.dispose())
-    declare(b.slots, 'sidebar.workspaces', 'shell.overlay')
+    declare(b.slots, 'sidebar.workspaces', 'shell.overlay', 'settings.section')
     await b.ctx.plugin({ inject: [...inject], apply }, syncedConfig({ recentViewLimit: 10 })).await()
     const action = sessionMenuActions(b.ctx)
     const toast = faceOf(entry(b.slots, 'shell.overlay', 'workspace.row-toast')) as RowToastInjected

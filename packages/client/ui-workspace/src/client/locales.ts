@@ -150,6 +150,10 @@ export const zh = {
   'delete.session.title': '删除会话',
   'delete.session.body': '此操作无法撤销，会话及其记录将被删除。',
   'delete.session.confirm': '删除',
+  'archive.nav': '已归档会话',
+  'archive.empty': '没有已归档的会话。',
+  'archive.unarchive': '取消归档',
+  'archive.delete': '删除',
 } satisfies Record<string, string>
 
 /** The workspace namespace key union. */
@@ -301,6 +305,10 @@ export const en = {
   'delete.session.title': 'Delete session',
   'delete.session.body': 'This cannot be undone. The session and its history will be deleted.',
   'delete.session.confirm': 'Delete',
+  'archive.nav': 'Archived sessions',
+  'archive.empty': 'No archived sessions.',
+  'archive.unarchive': 'Unarchive',
+  'archive.delete': 'Delete',
 } satisfies Record<WorkspaceKey, string>
 
 /** Japanese copy, checked against the English keys. */
@@ -449,6 +457,10 @@ export const ja = {
   'delete.session.title': 'セッションを削除',
   'delete.session.body': 'この操作は取り消せません。セッションと履歴が削除されます。',
   'delete.session.confirm': '削除',
+  'archive.nav': 'アーカイブ済みセッション',
+  'archive.empty': 'アーカイブ済みのセッションはありません。',
+  'archive.unarchive': 'アーカイブ解除',
+  'archive.delete': '削除',
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -597,6 +609,10 @@ export const es = {
   'delete.session.title': 'Eliminar sesión',
   'delete.session.body': 'Esta acción no se puede deshacer. La sesión y su historial se eliminarán.',
   'delete.session.confirm': 'Eliminar',
+  'archive.nav': 'Sesiones archivadas',
+  'archive.empty': 'No hay sesiones archivadas.',
+  'archive.unarchive': 'Desarchivar',
+  'archive.delete': 'Eliminar',
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -745,6 +761,10 @@ export const fr = {
   'delete.session.title': 'Supprimer la session',
   'delete.session.body': 'Cette action est irréversible. La session et son historique seront supprimés.',
   'delete.session.confirm': 'Supprimer',
+  'archive.nav': 'Sessions archivées',
+  'archive.empty': 'Aucune session archivée.',
+  'archive.unarchive': 'Désarchiver',
+  'archive.delete': 'Supprimer',
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -893,6 +913,10 @@ export const de = {
   'delete.session.title': 'Sitzung löschen',
   'delete.session.body': 'Dies kann nicht rückgängig gemacht werden. Die Sitzung und ihr Verlauf werden gelöscht.',
   'delete.session.confirm': 'Löschen',
+  'archive.nav': 'Archivierte Sitzungen',
+  'archive.empty': 'Keine archivierten Sitzungen.',
+  'archive.unarchive': 'Archivierung aufheben',
+  'archive.delete': 'Löschen',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -1041,6 +1065,10 @@ export const ru = {
   'delete.session.title': 'Удалить сеанс',
   'delete.session.body': 'Это действие необратимо. Сеанс и его история будут удалены.',
   'delete.session.confirm': 'Удалить',
+  'archive.nav': 'Архивные сеансы',
+  'archive.empty': 'Архивных сеансов нет.',
+  'archive.unarchive': 'Восстановить',
+  'archive.delete': 'Удалить',
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -1189,4 +1217,8 @@ export const pt = {
   'delete.session.title': 'Excluir sessão',
   'delete.session.body': 'Isto não pode ser desfeito. A sessão e seu histórico serão excluídos.',
   'delete.session.confirm': 'Excluir',
+  'archive.nav': 'Sessões arquivadas',
+  'archive.empty': 'Nenhuma sessão arquivada.',
+  'archive.unarchive': 'Desarquivar',
+  'archive.delete': 'Excluir',
 } satisfies Record<keyof typeof en, string>
