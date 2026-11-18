@@ -454,6 +454,7 @@ function makeHarness(
     read: () => savedScroll,
   }
   const forkAt = vi.fn()
+  const undoTurn = vi.fn()
   // Rows and the harness must observe the same chat-store instance.
   const chat = createChatStore().create()
   const transcriptView = createSnapshotStore<TranscriptViewMode>('compact')
@@ -586,6 +587,7 @@ function makeHarness(
     loadImage: vi.fn(() => Promise.reject(new Error('not used'))),
     chatScroll,
     forkAt,
+    undoTurn,
     // Absent-service default; mention tests override with a real resolver.
     fileMentions: () => undefined,
     t,
@@ -613,7 +615,7 @@ function makeHarness(
     setConnection: (state: ConnectionState) => { connection.set(state) },
     openFile, openUserFile, loadOlder, consumeOlder, prepareOlder, loadThrough, openView,
     setOutline: (value: unknown) => { outlineValue = value },
-    chatScroll, forkAt, toolOwners, fenceCalls, asideRenders,
+    chatScroll, forkAt, undoTurn, toolOwners, fenceCalls, asideRenders,
     setPerformanceUsage: (mode: 'compact' | 'detailed') => { performanceUsage.set(mode) },
     setGrouped: (value: ConversationGroupedView<ProcessGroupData> | undefined) => {
       grouped = value
@@ -2144,6 +2146,20 @@ describe('ChatView', () => {
     // Host boundary), not the assistant node seq.
     expect(h.forkAt).toHaveBeenCalledWith(3)
   }))
+
+  it('offers undo on every turn, pointing at the turn the message belongs to', () => {
+    const snapshot = chatSnapshotFixture({
+      nodes: [user(1, 'question'), assistant(2, 'answer')],
+      turnEnds: new Map([[1, 4]]),
+    })
+    const h = makeHarness({}, {}, snapshot)
+    const view = render(<h.ChatView {...h.props} />)
+    const undo = view.getByRole('button', { name: h.props.t('message.undo') })
+    fireEvent.click(undo)
+    // Undo addresses the turn, and the fork point is the event before it opened:
+    // turn/start belongs to the turn being removed.
+    expect(h.undoTurn).toHaveBeenCalledWith(1, 0)
+  })
 
   it('keeps pending file mentions non-interactive until admission enables the reference injector', () => {
     const pending: InboxState['next-step'][number] = {

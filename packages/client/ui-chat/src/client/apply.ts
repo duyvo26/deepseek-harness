@@ -319,6 +319,47 @@ export function apply(ctx: Context): void {
             },
             read: () => chatScrollPositions.get(sessionId) ?? null,
           },
+          undoTurn: (turn, startSeq) => {
+            /**
+             * Ask the Host to write its checkpoint of this turn's start back.
+             *
+             * The route belongs to the deliverables plugin, which owns the
+             * checkpoint store; a 404 means this turn recorded none, which is
+             * not an error — the conversation still moves.
+             * @param undoOf - the turn whose files are restored.
+             */
+            const restoreTurnFiles = async (undoOf: number): Promise<void> => {
+              const response = await fetch(`api/changes.restore?${new URLSearchParams({
+                sessionId, turn: String(undoOf),
+              })}`, { method: 'POST' })
+              if (!response.ok && response.status !== 404) throw new Error(await response.text())
+            }
+            // The conversation moves by forking from the turn's own start: the
+            // Session log is append-only, so a turn is undone by opening a copy
+            // that never had it, not by deleting events.
+            const undo = async (): Promise<void> => {
+              const childId = await ctx.sessions.fork({ sessionId, atSeq: startSeq, increaseTitle: false })
+              await restoreTurnFiles(turn)
+              ctx.uiWorkspace.openSession(childId)
+              // The undone Session stays readable but leaves the list: keeping
+              // both in view after an undo reads as two copies of one chat.
+              // Archiving is last so a refused undo never hides the current one.
+              await archiveUndoneSession()
+            }
+            /**
+             * Archive the Session the undo replaced.
+             *
+             * Archiving is the reversible way to take a Session out of the list;
+             * deleting it would also drop the turn the user undid, which is what
+             * a user may still want to read.
+             */
+            const archiveUndoneSession = async (): Promise<void> => {
+              await ctx.remote.workspace.archiveSession({ sessionId })
+            }
+            void undo().catch(() => {
+              // A refused undo leaves the open Session and its files as they are.
+            })
+          },
           forkAt: (seq) => {
             const turn = [...chat.getSnapshot().timeline.turns.values()].find(turn => turn.end?.seq === seq)
             const messageId = turn?.data.get('turn-tail')?.closing?.finalNode.messageId

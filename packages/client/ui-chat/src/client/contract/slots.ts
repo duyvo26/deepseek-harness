@@ -242,6 +242,17 @@ export interface ChatNodeOwnerProps {
   openFile: (path: string, options?: OpenFileOptions) => void
   inspectCall: ((callId: ToolCallId) => void) | undefined
   forkAt: (seq: number) => void
+  /**
+   * Undo one turn: move the conversation back to before it and restore the
+   * working directory to the state the turn started from.
+   *
+   * The conversation moves by forking from the turn's own start, because the
+   * Session log is append-only; the files move by asking the Host to write its
+   * checkpoint back.
+   * @param turn - the turn to undo.
+   * @param startSeq - event sequence just before the turn, the fork point.
+   */
+  undoTurn: (turn: number, startSeq: number) => void
   /** Session-authorized image loader supplied by the Chat view. */
   loadImage: MessageImageLoader
   /** Turn-process state when this Node belongs to a projected Turn. */
@@ -359,6 +370,13 @@ export interface ChatViewInjected {
     read: () => ChatScrollPosition | null
   }
   forkAt: (seq: number) => void
+  /**
+   * Undo one turn: move the conversation back to before it and restore the
+   * working directory to the state the turn started from.
+   * @param turn - the turn to undo.
+   * @param startSeq - event sequence just before the turn, the fork point.
+   */
+  undoTurn: (turn: number, startSeq: number) => void
 }
 
 /** Session-owned node sources shared with the view, plus the flow's connection state. */
@@ -371,7 +389,7 @@ export type ChatFlowDataInjected = Pick<ChatViewInjected, 'keyedHooks'> & {
 
 /** Ordered rows and reconciled local echoes rendered inside one Chat viewport. */
 export interface ChatFlowOwnerProps extends Pick<ChatNodeOwnerProps,
-  'cwd' | 'openFile' | 'inspectCall' | 'forkAt' | 'loadImage'> {
+  'cwd' | 'openFile' | 'inspectCall' | 'forkAt' | 'loadImage' | 'undoTurn'> {
   readonly entries: readonly RenderEntry[]
   readonly pendingInputs: readonly (PendingSubmission | InboxState['next-step'][number])[]
   readonly lastInputTurn: number | undefined

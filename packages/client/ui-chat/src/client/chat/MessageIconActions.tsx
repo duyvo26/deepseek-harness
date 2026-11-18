@@ -3,7 +3,7 @@
 
 import { useId, type ReactNode } from 'react'
 import {
-  IconBranchOutlineRegular, IconCheckOutlineRegular, IconCopyOutlineRegular, Tooltip, useClipboardCopy,
+  IconBranchOutlineRegular, IconCheckOutlineRegular, IconCopyOutlineRegular, IconRefreshOutlineRegular, Tooltip, useClipboardCopy,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 import { formatMessageClock } from './message-chrome.ts'
@@ -21,6 +21,14 @@ export interface MessageIconActionsProps {
   onBranch?: (() => void) | undefined
   /** The message is not a completed transcript tail, so branch stays visible but unavailable. */
   branchUnavailable?: boolean | undefined
+  /**
+   * Undo this message's turn: move the conversation back to before it and write
+   * the turn's file changes back.
+   *
+   * Omitted for a turn this Host cannot restore, which leaves no control rather
+   * than one that would fail.
+   */
+  onUndo?: (() => void) | undefined
   /** Parent layout class composed onto the actions row. */
   className?: string | undefined
   /**
@@ -43,7 +51,7 @@ export interface MessageIconActionsProps {
  * @returns The actions row element.
  */
 export function MessageIconActions({
-  text, time, clock, onBranch, branchUnavailable = false, className,
+  text, time, clock, onBranch, branchUnavailable = false, onUndo, className,
   extraActions, usageAction, t,
 }: MessageIconActionsProps) {
   const day = useCalendarDay()
@@ -63,6 +71,13 @@ export function MessageIconActions({
         </button>
       </Tooltip>
       {extraActions}
+      {onUndo !== undefined && (
+        <Tooltip label={t('message.undo')} side="bottom">
+          <button type="button" className={css.action} aria-label={t('message.undo')} onClick={onUndo}>
+            <IconRefreshOutlineRegular />
+          </button>
+        </Tooltip>
+      )}
       {onBranch !== undefined && (
         <Tooltip label={branchUnavailable ? t('message.branchUnavailable') : t('message.branch')} side="bottom" openOnClick={branchUnavailable}>
           {/* Native disabled buttons do not deliver the hover/focus events Tooltip needs. */}
