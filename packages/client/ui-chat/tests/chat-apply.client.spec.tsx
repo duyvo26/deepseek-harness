@@ -13,6 +13,7 @@ import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { SessionBinding } from '@deepseek-ai/dsh-api-session-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import { brandString } from '@deepseek-ai/dsh-brand'
 import type { WorkspaceId } from '@deepseek-ai/dsh-workspace/types'
 import {
   apply as applyConversation, inject as injectConversation,
@@ -290,6 +291,36 @@ describe('Chat apply wiring', () => {
       const injected = (entry.inject as () => Pick<PerformanceUsageRowInjected, 'hooks'>)()
       expect(injected.hooks.performanceUsage).toBe(face.hooks.performanceUsage)
     }
+    await b.runtime.dispose()
+  })
+
+  it('archives the Session that an undo replaced once the copy opens', async () => {
+    const b = await bench()
+    await b.runtime.sessions.add({ id: SID })
+    // Retained so the Session stays open for the undo; the binding itself is unused.
+    using _reference = b.runtime.sessions.retain(SID)
+    const view = b.runtime.slots.entries('conversation.view').find(entry => entry.options.id === 'chat')!
+    const face = (view.inject as (sessionId: SessionId) => {
+      undoTurn: (turn: number, startSeq: number) => void
+    })(SID)
+    // `provideNamespaces` assigns each face onto the Remote service itself.
+    const archive = (b.runtime.remote as unknown as {
+      workspace: { archiveSession: ReturnType<typeof vi.fn> }
+    }).workspace.archiveSession
+    const child = brandString<SessionId>('session-copy')
+    const fork = vi.spyOn(b.runtime.sessions, 'fork').mockResolvedValue(child)
+    const fetchSpy = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ paths: [] }), { status: 200 }))
+
+    face.undoTurn(2, 7)
+    await vi.waitFor(() => { expect(archive).toHaveBeenCalled() })
+    // The copy opens first, then the Session it replaced leaves the list.
+    expect(fork).toHaveBeenCalledWith(expect.objectContaining({ atSeq: 7 }))
+    expect(archive).toHaveBeenCalledWith({ sessionId: SID, stopActivity: true })
+    const opened = (b.runtime.ctx.uiWorkspace as unknown as { openSession: ReturnType<typeof vi.fn> }).openSession
+    expect(opened).toHaveBeenCalledWith(child)
+    fetchSpy.mockRestore()
+    fork.mockRestore()
     await b.runtime.dispose()
   })
 

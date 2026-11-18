@@ -356,10 +356,20 @@ export function apply(ctx: Context): void {
             const archiveUndoneSession = async (): Promise<void> => {
               // The Session is being replaced while it may still be settling its
               // turn, and the archive refuses running work unless asked to stop
-              // it. A refusal leaves both Sessions listed, which is recoverable;
-              // losing the new Session is not.
-              await ctx.remote.workspace.archiveSession({ sessionId, stopActivity: true })
-                .catch(() => undefined)
+              // it. A refused archive leaves both Sessions listed, which is
+              // recoverable; losing the new Session is not, so the failure is
+              // reported rather than thrown.
+              try {
+                // The Workspace namespace is its own service; this plugin reads it by
+                // name rather than declaring an injection no other Chat composition needs.
+                const workspace = ctx.get('remote.workspace') as
+                  | { archiveSession: (request: { sessionId: SessionId; stopActivity: boolean }) => Promise<unknown> }
+                  | undefined
+                if (workspace === undefined) return
+                await workspace.archiveSession({ sessionId, stopActivity: true })
+              } catch (error: unknown) {
+                ctx.logger.warn('undone Session could not be archived: %s', String(error))
+              }
             }
             void undo().catch(() => {
               // A refused undo leaves the open Session and its files as they are.
