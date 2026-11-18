@@ -73,6 +73,7 @@ async function bench() {
   } as never)
   runtime.remote.provideNamespaces({
     session: { openWorkspacePath: vi.fn(async () => ({ ok: true, value: { opened: true } })) },
+    workspace: { archiveSession: vi.fn(async () => ({ ok: true, value: undefined })) },
   })
   const locale = new LocaleRuntime(runtime.ctx)
   runtime.ctx.provide('locale', locale)

@@ -354,7 +354,12 @@ export function apply(ctx: Context): void {
              * a user may still want to read.
              */
             const archiveUndoneSession = async (): Promise<void> => {
-              await ctx.remote.workspace.archiveSession({ sessionId })
+              // The Session is being replaced while it may still be settling its
+              // turn, and the archive refuses running work unless asked to stop
+              // it. A refusal leaves both Sessions listed, which is recoverable;
+              // losing the new Session is not.
+              await ctx.remote.workspace.archiveSession({ sessionId, stopActivity: true })
+                .catch(() => undefined)
             }
             void undo().catch(() => {
               // A refused undo leaves the open Session and its files as they are.
