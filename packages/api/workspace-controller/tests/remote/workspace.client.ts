@@ -52,6 +52,7 @@ export function err<T>(error: RemoteFailure): RemoteResult<T> {
 export function workspace(id: string, overrides: Partial<WorkspaceView> = {}): WorkspaceView {
   return {
     workspaceId: id as WorkspaceId,
+    isGlobal: false,
     path: `/work/${id}`,
     title: id,
     sessionIds: [],

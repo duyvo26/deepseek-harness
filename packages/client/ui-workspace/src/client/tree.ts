@@ -78,6 +78,8 @@ export interface GroupNode {
   cwd: string | undefined
   /** Workspace creation time (epoch ms); absent only for the ungrouped bucket. */
   createdAt: number | undefined
+  /** Host-reported identity: this group backs project-less chats. */
+  isGlobal: boolean
   label: string
   /** Total visible sessions in the group. */
   sessionCount: number
@@ -125,6 +127,8 @@ interface Group {
   workspaceId: WorkspaceId | undefined
   cwd: string | undefined
   createdAt: number | undefined
+  /** Host-reported identity: this group backs project-less chats. */
+  isGlobal: boolean
   label: string
   sessions: SessionSummary[]
 }
@@ -298,10 +302,11 @@ function buildGroup(
   workspaceId: WorkspaceId | undefined,
   cwd: string | undefined,
   createdAt: number | undefined,
+  isGlobal: boolean,
   label: string,
   members: readonly SessionSummary[],
 ): Group {
-  return { key, workspaceId, cwd, createdAt, label, sessions: [...members] }
+  return { key, workspaceId, cwd, createdAt, isGlobal, label, sessions: [...members] }
 }
 
 /** Apply a stored Ungrouped order and append newly loose Sessions by recency. */
@@ -351,7 +356,7 @@ function groupByWorkspace(
     if (archivedFilter === 'only' && members.length === 0) continue
     groups.push(buildGroup(
       workspace.workspaceId, workspace.workspaceId, workspace.path,
-      Date.parse(workspace.createdAt), workspace.title, members,
+      Date.parse(workspace.createdAt), workspace.isGlobal, workspace.title, members,
     ))
   }
   const stray = list.ids
@@ -364,6 +369,7 @@ function groupByWorkspace(
       undefined,
       undefined,
       undefined,
+      false,
       '',
       orderedUngrouped(stray, ungroupedOrder, list.byId),
     ))
@@ -453,6 +459,7 @@ export function deriveGroups(
       workspaceId: g.workspaceId,
       cwd: g.cwd,
       createdAt: g.createdAt,
+      isGlobal: g.isGlobal,
       label: g.label,
       sessionCount: g.sessions.length,
       expanded,

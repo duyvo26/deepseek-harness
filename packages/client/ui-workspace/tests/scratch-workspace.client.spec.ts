@@ -1,21 +1,19 @@
-/** The shared project-less Workspace: path resolution, registration, and protection. */
+/** The shared project-less Workspace: registration, naming, and identity. */
 import { describe, expect, it, vi } from 'vitest'
 import type { IWorkspaces, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import {
-  SCRATCH_WORKSPACE_DIRECTORY, ensureScratchWorkspace, isScratchWorkspace, isScratchWorkspacePath,
-  scratchWorkspacePath,
+  SCRATCH_WORKSPACE_DIRECTORY, ensureScratchWorkspace, isScratchWorkspace,
 } from '../src/client/scratch-workspace.ts'
 
 /** Localized name a caller supplies; the module owns no display copy. */
 const GLOBAL_TITLE = 'Global'
 
-const HOME = '/Users/tester'
-
 function view(overrides: Partial<WorkspaceView> = {}): WorkspaceView {
   return {
     workspaceId: 'w-global' as WorkspaceId,
-    path: `${HOME}/.dsh/scratch`,
+    path: '/Users/tester/.dsh/scratch',
+    isGlobal: true,
     title: SCRATCH_WORKSPACE_DIRECTORY,
     sessionIds: [],
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -42,26 +40,12 @@ function workspacesDouble(created: WorkspaceView, ensureFailure?: unknown): {
   }
 }
 
-describe('scratchWorkspacePath', () => {
-  it('places the shared directory under the harness home', () => {
-    expect(scratchWorkspacePath(HOME)).toBe(`${HOME}/.dsh/scratch`)
-  })
-
-  it('tolerates a trailing separator on the host home', () => {
-    expect(scratchWorkspacePath(`${HOME}/`)).toBe(`${HOME}/.dsh/scratch`)
-    expect(scratchWorkspacePath(`${HOME}///`)).toBe(`${HOME}/.dsh/scratch`)
-  })
-
-  it.each([[undefined], ['']])('resolves nothing before host facts arrive: %s', (home) => {
-    expect(scratchWorkspacePath(home)).toBeUndefined()
-  })
-})
-
 describe('ensureScratchWorkspace', () => {
   it('asks the Host to register and create the shared directory', async () => {
-    const double = workspacesDouble(view({ title: SCRATCH_WORKSPACE_DIRECTORY }))
+    const double = workspacesDouble(view())
     const result = await ensureScratchWorkspace(double.workspaces, GLOBAL_TITLE)
-    // No path crosses the wire: the Host alone knows the harness home.
+    // No path crosses the wire: the Host alone knows the harness home, which is
+    // why an earlier browser-side path guess could not work.
     expect(double.ensureGlobal).toHaveBeenCalledWith()
     expect(result.title).toBe(GLOBAL_TITLE)
   })
@@ -86,38 +70,21 @@ describe('ensureScratchWorkspace', () => {
 })
 
 describe('isScratchWorkspace', () => {
-  it('recognises the shared Workspace by its directory', () => {
-    expect(isScratchWorkspace(view(), HOME)).toBe(true)
+  it('reads the identity the Host reports on the row', () => {
+    expect(isScratchWorkspace(view())).toBe(true)
   })
 
-  it('recognises it even after the user renames the row', () => {
-    expect(isScratchWorkspace(view({ title: 'Anything' }), HOME)).toBe(true)
+  it('refuses a Workspace the Host did not mark', () => {
+    expect(isScratchWorkspace(view({ isGlobal: false, path: '/projects/app' }))).toBe(false)
   })
 
-  it('does not match an ordinary project', () => {
-    expect(isScratchWorkspace(view({ path: '/projects/app' }), HOME)).toBe(false)
+  it('does not infer identity from the path', () => {
+    // The Host resolves `$DSH_HOME`, which a browser cannot compute: a row at a
+    // scratch-shaped path is not global unless the Host says so.
+    expect(isScratchWorkspace(view({ isGlobal: false, path: '/Users/tester/.dsh/scratch' }))).toBe(false)
   })
 
-  it('does not match a directory that merely ends like the scratch path', () => {
-    expect(isScratchWorkspace(view({ path: '/elsewhere/.dsh/scratch' }), HOME)).toBe(false)
-  })
-
-  it('matches nothing while the host home is unknown', () => {
-    expect(isScratchWorkspace(view(), undefined)).toBe(false)
-  })
-})
-
-describe('isScratchWorkspacePath', () => {
-  it('recognises the shared directory without host facts', () => {
-    // The delete refusal must work before the ready frame names the home.
-    expect(isScratchWorkspacePath(view())).toBe(true)
-  })
-
-  it('does not match an ordinary project', () => {
-    expect(isScratchWorkspacePath(view({ path: '/projects/app' }))).toBe(false)
-  })
-
-  it('does not match a directory that merely contains the name', () => {
-    expect(isScratchWorkspacePath(view({ path: '/elsewhere/scratch' }))).toBe(false)
+  it('keeps recognising the row after the user renames it', () => {
+    expect(isScratchWorkspace(view({ title: 'Anything' }))).toBe(true)
   })
 })

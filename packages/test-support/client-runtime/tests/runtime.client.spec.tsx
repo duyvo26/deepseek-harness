@@ -578,7 +578,7 @@ describe('workspaces', () => {
       const signal = new AbortController().signal
       await expect(runtime.workspaces.initializeDefault(signal)).resolves.toBeUndefined()
       const workspace = {
-        workspaceId: 'default' as WorkspaceId, title: 'default-workspace', path: '/default', sessionIds: [],
+        workspaceId: 'default' as WorkspaceId, title: 'default-workspace', isGlobal: false, path: '/default', sessionIds: [],
         createdAt: '2026-09-20T00:00:00Z', updatedAt: '2026-09-20T00:00:00Z',
       }
       const initialize = vi.fn(async () => workspace)
@@ -895,12 +895,12 @@ describe('workspaces action face', () => {
       ['create', 'create', 'rename', 'delete', 'insertBefore', 'insertSessionBefore',
         'archiveSession', 'archiveSession', 'unarchiveSession'])
 
-    ws.stub('create', () => Promise.resolve({ workspaceId: 'ws-x', title: 'X', path: '/x', sessionIds: [] } as never))
-    ws.stub('rename', () => Promise.resolve({ workspaceId: 'w1', title: 'S', path: '/s', sessionIds: [] } as never))
+    ws.stub('create', () => Promise.resolve({ workspaceId: 'ws-x', title: 'X', isGlobal: false, path: '/x', sessionIds: [] } as never))
+    ws.stub('rename', () => Promise.resolve({ workspaceId: 'w1', title: 'S', isGlobal: false, path: '/s', sessionIds: [] } as never))
     ws.stub('delete', () => Promise.resolve())
     const insertBefore = vi.fn(() => Promise.resolve())
     ws.stub('insertBefore', insertBefore)
-    ws.stub('insertSessionBefore', () => Promise.resolve({ workspaceId: 'w1', title: '', path: '', sessionIds: [] } as never))
+    ws.stub('insertSessionBefore', () => Promise.resolve({ workspaceId: 'w1', title: '', isGlobal: false, path: '', sessionIds: [] } as never))
     ws.stub('archiveSession', () => Promise.resolve())
     ws.stub('unarchiveSession', () => Promise.resolve())
     expect((await ws.create({ path: '/y' })).title).toBe('X')

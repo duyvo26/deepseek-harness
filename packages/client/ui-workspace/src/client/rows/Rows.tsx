@@ -217,7 +217,7 @@ function ProjectRow({
   const menuOpen = useContextMenuTarget(target => target?.kind === 'workspace' && target.value.workspaceId === row.workspaceId)
   const dragPreview = useRowDragPreview(css.dragPreview as string, DRAG_PREVIEW_PROPERTIES)
   const workspaceMenuTarget = row.workspaceId !== undefined && row.cwd !== undefined
-    ? { workspaceId: row.workspaceId, path: row.cwd } : undefined
+    ? { workspaceId: row.workspaceId, path: row.cwd, isGlobal: row.isGlobal } : undefined
   const ownRow = (
     <div
       className={clsx(css.projectRow, menuOpen && css.menuOpen)}

@@ -36,6 +36,7 @@ function workspace(
 ): WorkspaceView {
   return {
     workspaceId: wid(id),
+    isGlobal: false,
     path: `/w/${id}`,
     title: id,
     sessionIds,

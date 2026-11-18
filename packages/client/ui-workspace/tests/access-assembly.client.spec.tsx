@@ -101,9 +101,9 @@ describe('Workspace header actions under the page access snapshot', () => {
       const target = { kind: 'workspace' as const, value: { workspaceId: WORKSPACE, path: '/projects/project', displayTitle: 'Project' } }
       const deniedMenu = runtime.ctx.contextMenus.resolve(target)
       await deniedMenu.ready
-      // Only the highlight submenu survives a completely denied snapshot: it
-      // is browser-local viewing state and asks no Host permission.
-      expect(deniedMenu.source.getSnapshot().map(item => item.id)).toEqual(['workspace.color/color'])
+      // A denied snapshot offers no menu at all: the highlight submenu writes
+      // browser-local state but still belongs to an owner-only row.
+      expect(deniedMenu.source.getSnapshot()).toEqual([])
       deniedMenu.dispose()
       expect(header.getAttribute('draggable')).toBe('false')
 

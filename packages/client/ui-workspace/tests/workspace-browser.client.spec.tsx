@@ -68,7 +68,7 @@ const sessionState = (
   }
 }
 const workspace = (id: string, sessionIds: string[], title = id): WorkspaceView => ({
-  workspaceId: wid(id), path: `/projects/${id}`, title,
+  workspaceId: wid(id), path: `/projects/${id}`, isGlobal: false, title,
   sessionIds: sessionIds.map(sid), createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
 })
 const workspaceState = (
@@ -188,7 +188,7 @@ describe('WorkspaceBrowser', () => {
     })
     if (mode === 'workspace') {
       expect(renderFactorySlot).toHaveBeenCalledWith('contextMenu.button', {
-        target: { kind: 'workspace', value: { workspaceId: wid('alpha'), path: '/projects/alpha', displayTitle: 'alpha' } },
+        target: { kind: 'workspace', value: { workspaceId: wid('alpha'), path: '/projects/alpha', isGlobal: false, displayTitle: 'alpha' } },
         label: '工作区“alpha”的操作', className: rowCss.iconButton,
       })
     }

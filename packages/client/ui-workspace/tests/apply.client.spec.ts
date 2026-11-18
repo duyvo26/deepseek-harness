@@ -43,7 +43,7 @@ const sessionState = (items: readonly SessionSummary[]): SessionListState => ({
   projectionsBySession: {},
 })
 const workspace = (id: string, sessionIds: readonly string[]): WorkspaceView => ({
-  workspaceId: id as WorkspaceId, path: `/projects/${id}`, title: id,
+  workspaceId: id as WorkspaceId, path: `/projects/${id}`, isGlobal: false, title: id,
   sessionIds: sessionIds.map(sid), createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
 })
 const workspaceState = (
@@ -79,6 +79,7 @@ async function bench(access: 'fake' | 'static' = 'fake') {
   else ctx.provide('remoteAccess', { source: accessSource, whenAccess: vi.fn(() => () => {}), whenResourceAccess })
   const create = vi.fn(async (input: { name: string } | { path: string }) => ({
     workspaceId: 'ws-new' as never,
+    isGlobal: false,
     path: 'name' in input ? `/projects/${input.name}` : input.path,
     title: 'new', sessionIds: [], createdAt: '0', updatedAt: '0',
   }))

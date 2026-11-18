@@ -40,6 +40,12 @@ export interface WorkspaceEntityHost {
   table(): KvTable<WorkspaceId, WorkspaceRecord>
 
   /**
+   * Absolute directory backing the shared project-less chat Workspace.
+   * @returns the resolved path, which only the Host can compute from `$DSH_HOME`.
+   */
+  globalWorkspacePath(): string
+
+  /**
    * Validate an already-accounted session, preserving ownership when its fully
    * qualified cwd cannot resolve because a path component is missing.
    * @param id - Session already present in this workspace's candidate account.
@@ -93,6 +99,10 @@ export class WorkspaceEntity implements Workspace {
 
   get path(): string {
     return this.record.path
+  }
+
+  get isGlobal(): boolean {
+    return this.record.path === this.host.globalWorkspacePath()
   }
 
   get title(): string {

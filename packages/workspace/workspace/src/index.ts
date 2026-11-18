@@ -202,6 +202,7 @@ export class WorkspaceRegistry extends Service {
 
   private readonly host: WorkspaceEntityHost = {
     table: () => this.requireTable(),
+    globalWorkspacePath: () => this.globalPath(),
     candidateMatches: (id, path) => this.sessionPaths.get(id) === path || this.missingSessionPaths.has(id),
     readSessionHeader: id => this.readSessionHeader(id),
     sessionHeader: (id) => {
@@ -289,8 +290,15 @@ export class WorkspaceRegistry extends Service {
    * @returns the registered Workspace.
    */
   async ensureGlobal(): Promise<Workspace> {
-    const path = join(resolveDshHome(), GLOBAL_WORKSPACE_DIRECTORY)
-    return await this.create(path, undefined, { createIfMissing: true })
+    return await this.create(this.globalPath(), undefined, { createIfMissing: true })
+  }
+
+  /**
+   * Absolute directory backing the shared project-less chat Workspace.
+   * @returns the path under the Host's own harness home.
+   */
+  private globalPath(): string {
+    return join(resolveDshHome(), GLOBAL_WORKSPACE_DIRECTORY)
   }
 
   /**

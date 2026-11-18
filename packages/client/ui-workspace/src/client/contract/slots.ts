@@ -61,7 +61,16 @@ import type { createWorkspaceViewStore } from '../stores.ts'
 declare module '@deepseek-ai/dsh-client-ui-context-menu/client' {
   interface ContextMenuTargetMap {
     /** Registered Workspace header; path and title belong to the clicked row. */
-    workspace: { readonly workspaceId: WorkspaceId; readonly path: string; readonly displayTitle: string }
+    workspace: {
+      readonly workspaceId: WorkspaceId
+      readonly path: string
+      readonly displayTitle: string
+      /**
+       * Host-reported identity: this row backs project-less chats. Absent from
+       * a target assembled by an older caller, and absence means "not global".
+       */
+      readonly isGlobal?: boolean
+    }
   }
 }
 

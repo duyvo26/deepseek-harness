@@ -19,6 +19,12 @@ export interface WorkspaceView {
   readonly workspaceId: WorkspaceId
   /** Canonical host directory path. */
   readonly path: string
+  /**
+   * Whether this is the shared project-less chat Workspace. The Host answers
+   * because it alone resolves `$DSH_HOME`, so a browser cannot recognise the
+   * row by path.
+   */
+  readonly isGlobal: boolean
   /** User-visible title. */
   readonly title: string
   /** Sessions accounted to this Workspace in manual order. */

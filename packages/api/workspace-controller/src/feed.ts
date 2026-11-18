@@ -28,6 +28,7 @@ export function workspaceView(workspace: Workspace): WorkspaceView {
   return {
     workspaceId: workspace.id,
     path: workspace.path,
+    isGlobal: workspace.isGlobal,
     title: workspace.title,
     sessionIds: [...workspace.sessionIds],
     createdAt: workspace.createdAt,
@@ -35,11 +36,28 @@ export function workspaceView(workspace: Workspace): WorkspaceView {
   }
 }
 
-function changedWorkspaceView(workspaceId: string, value: unknown): WorkspaceView {
+/**
+ * Project one changed record, taking the identity fact the record does not
+ * store from the registry entity that resolves it.
+ * @param workspaceId - changed record key.
+ * @param value - raw stored record.
+ * @param registry - authoritative registry the identity fact comes from.
+ * @returns the browser projection.
+ */
+function changedWorkspaceView(
+  workspaceId: string,
+  value: unknown,
+  registry: { get(id: WorkspaceId): { isGlobal: boolean } | undefined },
+): WorkspaceView {
   const record: WorkspaceRecord = workspaceRecord.parse(value)
+  const id = brandString<WorkspaceId>(workspaceId)
   return {
-    workspaceId: brandString<WorkspaceId>(workspaceId),
+    workspaceId: id,
     path: record.path,
+    // A record written before its entity is live still projects a row; the
+    // registry has the fact once the entity is published, which a later frame
+    // carries.
+    isGlobal: registry.get(id)?.isGlobal === true,
     title: record.title,
     sessionIds: [...record.sessionIds],
     createdAt: record.createdAt,
@@ -138,7 +156,7 @@ export class WorkspaceFeed {
     if (!this.knownIds.has(change.key)) return
     this.publish({
       type: 'upsert',
-      workspace: changedWorkspaceView(change.key, change.value),
+      workspace: changedWorkspaceView(change.key, change.value, this.ctx.workspaceRegistry),
     })
   }
 

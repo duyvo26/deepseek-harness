@@ -74,6 +74,14 @@ export interface Workspace {
   readonly id: WorkspaceId
 
   /**
+   * Whether this is the shared project-less chat Workspace.
+   *
+   * The Host answers because it alone resolves `$DSH_HOME`: a browser cannot
+   * compute the directory, so it cannot recognise the row by path either.
+   */
+  readonly isGlobal: boolean
+
+  /**
    * Canonical directory path: the `fs.realpath` of the path given at create
    * time (trailing slashes, `..`, and symlinks all resolved). Never rewritten
    * afterwards, even when the directory disappears (see {@link status}).

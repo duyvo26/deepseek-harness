@@ -18,51 +18,21 @@ import type { IWorkspaces, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-
 /** Directory name the Host creates under its harness home. */
 export const SCRATCH_WORKSPACE_DIRECTORY = 'scratch'
 
-/** Harness home directory name, matching the Host's own default. */
-const DSH_HOME_DIRECTORY = '.dsh'
-
 /**
- * Resolve the shared Workspace path from the Host home the page received.
+ * Whether one Workspace row is the shared project-less one.
  *
- * A browser reaches this only to recognise a row it already has; it never uses
- * the result to register one, because the Host resolves the location itself
- * and `$DSH_HOME` can point somewhere this page cannot compute.
- * @param hostHome - Host account home directory, or undefined before the ready frame.
- * @returns the absolute scratch directory, or undefined when the home is unknown.
- */
-export function scratchWorkspacePath(hostHome: string | undefined): string | undefined {
-  if (hostHome === undefined || hostHome.length === 0) return undefined
-  return `${hostHome.replace(/\/+$/, '')}/${DSH_HOME_DIRECTORY}/${SCRATCH_WORKSPACE_DIRECTORY}`
-}
-
-/**
- * Whether one Workspace is the shared project-less one.
- *
- * Recognition is by directory, not by title: the title is user-editable after
- * the first chat, while the path is what every global chat's Sessions record.
- * @param workspace - Workspace to test.
- * @param hostHome - Host account home, or undefined before the ready frame.
- * @returns whether this row is the global Workspace.
+ * The Host answers on the row: it alone resolves `$DSH_HOME`, so a browser
+ * cannot recognise the directory by path — an earlier revision tried, and a
+ * deployment whose harness home was not `~/.dsh` broke it.
+ * @param workspace - row to test.
+ * @returns whether the row backs project-less chats.
  */
 export function isScratchWorkspace(
-  workspace: Pick<WorkspaceView, 'path'>,
-  hostHome: string | undefined,
+  workspace: { readonly isGlobal?: boolean } | undefined,
 ): boolean {
-  const path = scratchWorkspacePath(hostHome)
-  return path !== undefined && workspace.path === path
-}
-
-/**
- * Whether a Workspace row is the shared project-less one, without host facts.
- *
- * Deleting that row would strand every global chat, and the refusal has to
- * work even before the ready frame names the home, so this matches on the
- * directory's own final segments instead.
- * @param workspace - Workspace to test.
- * @returns whether the row names the shared directory.
- */
-export function isScratchWorkspacePath(workspace: Pick<WorkspaceView, 'path'>): boolean {
-  return workspace.path.endsWith(`/${DSH_HOME_DIRECTORY}/${SCRATCH_WORKSPACE_DIRECTORY}`)
+  // A menu target assembled by an older caller may omit the field; absence
+  // means "not identified as global", never "global".
+  return workspace?.isGlobal === true
 }
 
 /**

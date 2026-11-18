@@ -58,7 +58,7 @@ function workspace(
   return {
     workspaceId: wid(id),
     path: `/w/${id}`,
-    title: id,
+    isGlobal: false, title: id,
     sessionIds,
     createdAt,
     updatedAt: createdAt,

@@ -110,7 +110,7 @@ function installClipboard(writeText: (text: string) => Promise<void>): () => voi
 describe('Workspace and Session hover handoff', () => {
   describe('project highlight colour', () => {
     const workspaceNode = (id: string): GroupNode => ({
-      key: id, workspaceId: wid(id), cwd: `/projects/${id}`, createdAt: 0, label: 'Important',
+      key: id, workspaceId: wid(id), cwd: `/projects/${id}`, createdAt: 0, isGlobal: false, label: 'Important',
       sessionCount: 0, expanded: true, containsCurrent: false, sessions: [],
     })
 
@@ -170,7 +170,7 @@ describe('Workspace and Session hover handoff', () => {
     vi.useFakeTimers()
     try {
       const workspace = (key: string): GroupNode => ({
-        key, workspaceId: wid(key), cwd: `/projects/${key}`, createdAt: 0, label: key,
+        key, workspaceId: wid(key), cwd: `/projects/${key}`, createdAt: 0, isGlobal: false, label: key,
         sessionCount: 0, expanded: true, containsCurrent: false, sessions: [],
       })
       const session: SessionNode = {
@@ -234,6 +234,7 @@ describe('native row drag previews', () => {
     const view = render(kind === 'workspace'
       ? <ProjectRowItem group={{
         key: 'workspace', workspaceId: wid('workspace'), cwd: '/workspace', createdAt: 0,
+        isGlobal: false,
         label: 'Draggable row', sessionCount: 0, expanded: true, containsCurrent: false, sessions: [],
       }} onToggle={vi.fn()} onCreate={vi.fn()} drag={drag} t={t} />
       : <SessionNodeItem node={{
@@ -407,7 +408,7 @@ describe('workspace browser rows', () => {
     const onToggle = vi.fn()
     const onCreate = vi.fn()
     const group: GroupNode = {
-      key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, label: 'Project',
+      key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, isGlobal: false, label: 'Project',
       sessionCount: 1, expanded: true, containsCurrent: true, sessions: [],
     }
     render(<ProjectRowItem group={group} onToggle={onToggle} onCreate={onCreate} t={t}
@@ -656,10 +657,10 @@ describe('workspace browser rows', () => {
     const openMenu = vi.fn(), onToggle = vi.fn()
     const renderFactorySlot = vi.fn(renderMenuButton)
     const group: GroupNode = {
-      key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, label: 'Project',
+      key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, isGlobal: false, label: 'Project',
       sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
     }
-    const target = { kind: 'workspace', value: { workspaceId: wid('project'), path: '/projects/project', displayTitle: 'Project' } } as const
+    const target = { kind: 'workspace', value: { workspaceId: wid('project'), path: '/projects/project', isGlobal: false, displayTitle: 'Project' } } as const
     const view = render(<ProjectRowItem group={group} onToggle={onToggle} onCreate={vi.fn()}
       useContextMenu={contextMenuHook(openMenu)} renderFactorySlot={renderFactorySlot} t={t} />)
     fireEvent.contextMenu(screen.getByRole('treeitem'), { clientX: 36, clientY: 48 })
@@ -675,7 +676,7 @@ describe('workspace browser rows', () => {
 
   it('workspace row offers only the actions its Workspace access snapshot allows', () => {
     const group: GroupNode = {
-      key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, label: 'Project',
+      key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, isGlobal: false, label: 'Project',
       sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
     }
     const allowed = new Set<string>(['workspace/rename'])
@@ -706,7 +707,7 @@ describe('workspace browser rows', () => {
 
   it('ungrouped bucket offers no New Session and asks no access', () => {
     const group: GroupNode = {
-      key: 'ungrouped', workspaceId: undefined, cwd: undefined, createdAt: undefined, label: '',
+      key: 'ungrouped', workspaceId: undefined, cwd: undefined, createdAt: undefined, isGlobal: false, label: '',
       sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
     }
     const useWorkspaceAccess = vi.fn(() => true)
@@ -749,7 +750,7 @@ describe('workspace browser rows', () => {
     const restoreClipboard = installClipboard(writeText)
     try {
       const group: GroupNode = {
-        key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, label: 'Project',
+        key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, isGlobal: false, label: 'Project',
         sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
       }
       render(<ProjectRowItem group={group} onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)
@@ -772,7 +773,7 @@ describe('workspace browser rows', () => {
     vi.useFakeTimers()
     try {
       const group: GroupNode = {
-        key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, label: 'Project',
+        key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, isGlobal: false, label: 'Project',
         sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
       }
       render(<ProjectRowItem group={group} onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)
@@ -805,7 +806,7 @@ describe('workspace browser rows', () => {
     vi.useFakeTimers()
     try {
       const group: GroupNode = {
-        key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, label: 'Project',
+        key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, isGlobal: false, label: 'Project',
         sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
       }
       render(<ProjectRowItem group={group} onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)
@@ -831,7 +832,7 @@ describe('workspace browser rows', () => {
     const restoreClipboard = installClipboard(writeText)
     try {
       const group: GroupNode = {
-        key: 'project', workspaceId: wid('project'), cwd: '/home/u/Documents/project', createdAt: 0, label: 'Project',
+        key: 'project', workspaceId: wid('project'), cwd: '/home/u/Documents/project', createdAt: 0, isGlobal: false, label: 'Project',
         sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
       }
       render(<ProjectRowItem group={group} home="/home/u" onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)
@@ -851,7 +852,7 @@ describe('workspace browser rows', () => {
     vi.useFakeTimers()
     try {
       const group: GroupNode = {
-        key: 'project', workspaceId: wid('project'), cwd: undefined, createdAt: 0, label: 'Project',
+        key: 'project', workspaceId: wid('project'), cwd: undefined, createdAt: 0, isGlobal: false, label: 'Project',
         sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
       }
       render(<ProjectRowItem group={group} home="/home/u" onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)
@@ -869,7 +870,7 @@ describe('workspace browser rows', () => {
     vi.useFakeTimers()
     try {
       const group: GroupNode = {
-        key: 'project', workspaceId: wid('project'), cwd: 'C:\\Users\\u\\project', createdAt: 0, label: 'Project',
+        key: 'project', workspaceId: wid('project'), cwd: 'C:\\Users\\u\\project', createdAt: 0, isGlobal: false, label: 'Project',
         sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
       }
       render(<ProjectRowItem group={group} home="C:\\Users\\u" onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)
@@ -883,7 +884,7 @@ describe('workspace browser rows', () => {
 
   it('ungrouped bucket renders no workspace menu', () => {
     const group: GroupNode = {
-      key: '', workspaceId: undefined, cwd: undefined, createdAt: undefined, label: 'Ungrouped',
+      key: '', workspaceId: undefined, cwd: undefined, createdAt: undefined, isGlobal: false, label: 'Ungrouped',
       sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
     }
     render(<ProjectRowItem group={group} onToggle={vi.fn()} onCreate={vi.fn()} t={t} />)

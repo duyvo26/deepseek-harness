@@ -68,7 +68,7 @@ import {
 import {
   createWorkspaceColorStore, WORKSPACE_COLOR_KEYS,
 } from './workspace-colors.ts'
-import { ensureScratchWorkspace, isScratchWorkspace, isScratchWorkspacePath } from './scratch-workspace.ts'
+import { ensureScratchWorkspace, isScratchWorkspace } from './scratch-workspace.ts'
 import { en, ja, es, fr, de, ru, pt, zh, type WorkspaceKey } from './locales.ts'
 
 export type { StartSessionOptions, UiWorkspace } from './navigation.ts'
@@ -352,10 +352,7 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   })
   const isScratchWorkspaceById = (workspaceId: WorkspaceId): boolean => {
     const row = workspaces.list.getSnapshot().items.find(item => item.workspaceId === workspaceId)
-    // Path-shaped recognition keeps the refusal working before host facts name
-    // the home; the home-based test only refines an already-recognised row.
-    return row !== undefined
-      && (isScratchWorkspacePath(row) || isScratchWorkspace(row, hostInfo.getSnapshot().home))
+    return row !== undefined && isScratchWorkspace(row)
   }
   const workspaceActionRequest = createSnapshotStore<WorkspaceActionRequest | null>(null)
   const requestWorkspaceAction = (workspaceId: WorkspaceId, displayTitle: string, action: 'rename' | 'delete'): void => {
@@ -377,13 +374,20 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   })
   /**
    * The highlight submenu: one entry per palette colour plus a clearing entry,
-   * with the current colour marked. Viewing state, so it stays available
-   * without a Host write permission.
+   * with the current colour marked.
+   *
+   * The colour itself is browser-local, so it needs no write permission — but a
+   * row the viewer may not act on at all offers no menu, and a surface that
+   * cannot even follow the Workspace must not paint its menu either.
    */
   ctx.effect(() => ctx.contextMenus.register({
     id: 'workspace.color', target: 'workspace', order: 150,
     observe: () => [workspaceColors.store],
     resolve: ({ workspaceId }) => {
+      // A shared-viewer page may follow the Workspace but owns nothing in it,
+      // and its row offers no menu at all. Rename is the owner-only verb that
+      // distinguishes the two without inventing a new grant.
+      if (!ctx.remoteAccess.source('workspace', workspaceId, 'workspace/rename').getSnapshot()) return []
       const current = workspaceColors.store.getSnapshot()[workspaceId]
       const menuCopy = ctx.locale.bind(NS)
       return [{
@@ -417,10 +421,12 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   }), 'workspace: rename menu action')
   ctx.effect(() => ctx.contextMenus.register({
     id: 'workspace.delete', target: 'workspace', order: 300,
-    resolve: ({ workspaceId, displayTitle }) => {
+    resolve: (target) => {
+      const { workspaceId, displayTitle } = target
       // The shared project-less Workspace backs every global chat: removing its
       // registration would strand them under Ungrouped, so it offers no delete.
-      if (isScratchWorkspaceById(workspaceId)) return []
+      // The row carries the Host's own answer, so this needs no lookup.
+      if (isScratchWorkspace(target)) return []
       return ctx.remoteAccess.source('workspace', workspaceId, 'workspace/delete').getSnapshot()
         ? [{ id: 'delete', label: ctx.locale.bind(NS)('delete.workspace'), icon: { key: 'workspace.delete' }, danger: true, separatorBefore: true,
           run: () => { requestWorkspaceAction(workspaceId, displayTitle, 'delete') } }] : []
