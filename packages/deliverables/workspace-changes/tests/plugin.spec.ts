@@ -357,8 +357,10 @@ describe('workspace-changes without a repository', () => {
     toolCall(session, 1, 'bash', { command: 'x' })
     endTurn(session, 1)
     await settle(ctx, session)
+    // A turn whose working directory the Host checkpointed says so, which is
+    // what lets the card offer undo.
     expect(changes(ctx, session)).toEqual([{
-      turn: 1, cwd, total: 3, added: 7, deleted: 1,
+      turn: 1, cwd, total: 3, added: 7, deleted: 1, restorable: true,
       files: [
         { path: 'existing.txt', display: 'existing.txt', added: 3, deleted: 1 },
         { path: 'mixed.txt', display: 'mixed.txt', added: 2, deleted: 0 },
@@ -498,7 +500,12 @@ describe('workspace-changes without git', () => {
       endTurn(session, turn)
       await settle(ctx, session)
     }
-    expect(changes(ctx, session)).toEqual([{ turn: 2, cwd, total: 1, added: 1, deleted: 0, files: [{ path: 'w.txt', display: 'w.txt', added: 1, deleted: 0 }] }])
+    // Without git there is no shadow repository to hold a checkpoint, so the
+    // turn reports nothing to undo.
+    expect(changes(ctx, session)).toEqual([{
+      turn: 2, cwd, total: 1, added: 1, deleted: 0,
+      files: [{ path: 'w.txt', display: 'w.txt', added: 1, deleted: 0 }],
+    }])
     expect(await ctx.workspaceChanges.diff(session.id, announcedSeq(session), 0, signal)).toMatchObject({ kind: 'text', before: false, after: true, hunks: [{ lines: ['+w'] }] })
     expect(info).toHaveBeenCalledTimes(1)
     expect(info.mock.calls[0]![0]).toContain('git is unavailable')

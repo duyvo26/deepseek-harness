@@ -37,6 +37,13 @@ export interface WorkspaceChangesSummary {
   deleted: number
   /** Git tree ids of the turn-start and turn-end snapshots; absent when no snapshot was taken. */
   snapshot?: { before: string; after: string }
+  /**
+   * Whether this Host recorded a checkpoint the turn can be restored to.
+   *
+   * A card offers undo only for a turn the Host can actually return to, so the
+   * summary answers that rather than the browser reading the Session log.
+   */
+  restorable?: boolean
 }
 
 /** One unified-diff hunk with three context lines; every line keeps its `+`, `-`, or space prefix. */
@@ -94,6 +101,23 @@ export interface WorkspaceChanges {
    * @throws when a snapshot read fails for a live Session.
    */
   diff(sessionId: SessionId, seq: number, index: number, signal: AbortSignal): Promise<WorkspaceFileDiff | undefined>
+  /**
+   * Write the working directory back to the state one turn started from.
+   *
+   * This is the undo a user asks for after a turn produced the wrong change. It
+   * writes the working directory only: the user's own repository, index, refs,
+   * and object store are never touched, and neither is any change the user made
+   * outside the checkpointed directory.
+   * @param sessionId - the Session whose turn is undone.
+   * @param turn - the turn to return to its start.
+   * @param signal - cancels the restore.
+   * @returns the written and removed paths, or undefined when this Host holds no
+   *   checkpoint for that turn, which is the case without git or before the
+   *   first checkpoint of a Session.
+   * @throws when a recorded blob cannot be read or a path cannot be written; the
+   *   working directory may then be partially restored.
+   */
+  restoreTurn(sessionId: SessionId, turn: number, signal: AbortSignal): Promise<readonly string[] | undefined>
 }
 
 declare module '@deepseek-ai/dsh-session/types' {
@@ -104,6 +128,17 @@ declare module '@deepseek-ai/dsh-session/types' {
      * lives. The latest event for one turn replaces earlier ones.
      */
     'workspace/changes': { turn: number }
+
+    /**
+     * The working directory was recorded before a mutating tool call of this
+     * turn. The snapshot itself stays in a shadow repository the Host owns and is
+     * served by `workspaceChanges.restoreTurn` while the Session lives; the event
+     * records only that the turn can be restored.
+     *
+     * `ignorable` on the envelope keeps an older reader from rejecting a Session
+     * that carries it.
+     */
+    'workspace/checkpoint': { turn: number }
   }
 }
 

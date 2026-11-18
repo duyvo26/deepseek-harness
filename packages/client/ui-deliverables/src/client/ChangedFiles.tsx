@@ -34,12 +34,16 @@ function Counts({ added, deleted, t }: { added: number; deleted: number } & Prop
  * @param props - the recorded summary, the review opener, and localized copy.
  * @returns the card.
  */
-export function ChangedFiles({ changes, cwd, openReview, t, sessionId, useChangesDiff, loadChangesDiff }: {
+export function ChangedFiles({
+  changes, cwd, openReview, onUndo, t, sessionId, useChangesDiff, loadChangesDiff,
+}: {
   /** The served summary with the sequence of the event that announced it. */
   changes: Pick<ChangesSummary, 'files' | 'total' | 'added' | 'deleted'> & { seq: number }
   cwd: string | undefined
   /** Open the turn's review on the file at an original summary index. */
   openReview: (index: number) => void
+  /** Undo the turn, or absent when the Host holds no checkpoint for it. */
+  onUndo?: (() => Promise<void>) | undefined
 } & PropsLocale<typeof NS> & PreviewProps) {
   const cardRef = useRef<HTMLDivElement>(null)
   const pathDescriptionId = useId()
@@ -95,6 +99,11 @@ export function ChangedFiles({ changes, cwd, openReview, t, sessionId, useChange
         </li>
       ))}
     </ul>}
+    {onUndo !== undefined && <button type="button" className={css.toggle}
+      aria-label={t('changes.undoAria')}
+      onClick={() => { void onUndo() }}>
+      <span>{t('changes.undoAction')}</span>
+    </button>}
     {foldable && <button type="button" className={css.toggle}
       aria-expanded={expanded}
       aria-label={t(expanded ? 'changes.collapseAria' : 'changes.expandAria', { count: String(changes.files.length) })}

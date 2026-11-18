@@ -91,8 +91,10 @@ describe('change summary route', () => {
     const response = await read()
     expect(response.status).toBe(200)
     expect(response.headers.get('cache-control')).toBe('no-store')
-    // The working directory and snapshot ids stay on the Host.
-    expect(await response.json()).toEqual({ turn: 1, total: 3, added: 3, deleted: 0, files: data.files })
+    // The working directory and snapshot ids stay on the Host; the card learns
+    // only whether the turn can be undone.
+    expect(await response.json())
+      .toEqual({ turn: 1, total: 3, added: 3, deleted: 0, files: data.files, restorable: false })
     expect((await read('?sessionId=owner&seq=8')).status).toBe(404)
     expect((await read('?sessionId=other&seq=9')).status).toBe(404)
     for (const bad of ['', '?seq=9', '?sessionId=owner', '?sessionId=owner&seq=x', '?sessionId=owner&seq=1.5']) {

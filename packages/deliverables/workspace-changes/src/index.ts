@@ -16,7 +16,9 @@ import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-subprocess'
 import type {} from '@deepseek-ai/dsh-tools'
 import type { FsTarget } from '@deepseek-ai/dsh-fs'
+import { CheckpointStore, CHECKPOINT_DIRECTORY, checkpointRef } from './checkpoint.ts'
 import { GitRunner } from './git.ts'
+import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { TurnRecorder } from './recorder.ts'
 import type { WorkspaceChanges } from './types.ts'
 
@@ -45,6 +47,14 @@ export interface Config {
   maxFileBytes: number
   /** Milliseconds a line comparison may run before it degrades to whole-file replacement. */
   diffTimeoutMs: number
+  /**
+   * Directory holding the shadow repositories that make a turn restorable.
+   *
+   * Omitted uses `checkpoints` under the harness home, which keeps them out of
+   * the user's own repository. Point it elsewhere to separate checkpoint storage
+   * from the rest of the harness home.
+   */
+  checkpointHome?: string
 }
 
 /** Schemastery validation for {@link Config}. */
@@ -54,7 +64,19 @@ export const Config: z<Config> = z.object({
   maxFiles: z.number().default(500),
   maxFileBytes: z.number().default(2 * 1024 * 1024),
   diffTimeoutMs: z.number().default(100),
+  checkpointHome: z.string(),
 })
+
+/**
+ * Tools whose calls change the working directory and therefore need a checkpoint.
+ *
+ * A shell command can change any file, which is the reason it is included; the
+ * cost is one checkpoint per turn rather than one per call, because the first
+ * call of a turn is the one that records it.
+ */
+const MUTATING_TOOLS: ReadonlySet<string> = new Set([
+  'write', 'edit', 'apply_patch', 'str_replace_editor', 'bash',
+])
 
 function eligible(session: Session): string | undefined {
   const { cwd, origin, delegationDepth } = session.header
@@ -103,21 +125,21 @@ export function apply(ctx: Context, config: Config): void {
   const recorders = new Map<Session, TurnRecorder>()
   const mutations = new WeakMap<object, TurnRecorder>()
   const byId = new Map<SessionId, TurnRecorder>()
+  /** Working directory per Session, which restore addresses by id. */
+  const cwds = new Map<SessionId, string>()
+  /** `<session>:<turn>` pairs a checkpoint was recorded for, read at turn end. */
+  const restorable = new Set<string>()
   const forget = (session: Session): Promise<void> => {
     const recorder = recorders.get(session)
     recorders.delete(session)
     byId.delete(session.id)
+    cwds.delete(session.id)
     return recorder?.dispose() ?? Promise.resolve()
   }
   ctx.effect(() => async () => {
     lifetime.abort()
     await Promise.all([...recorders.keys()].map(forget))
   })
-  const service: WorkspaceChanges = {
-    summary: (sessionId, seq) => byId.get(sessionId)?.summary(seq),
-    diff: (sessionId, seq, index, signal) => byId.get(sessionId)?.diff(seq, index, signal) ?? Promise.resolve(undefined),
-  }
-  ctx.provide('workspaceChanges', service)
   let runner: Promise<GitRunner | null> | undefined
   const gitRunner = (): Promise<GitRunner | null> => {
     runner ??= resolveGit(ctx, lifetime.signal).then((executable) => {
@@ -129,6 +151,40 @@ export function apply(ctx: Context, config: Config): void {
     })
     return runner
   }
+  // Checkpoints live in a repository of this plugin's own under the harness
+  // home: writing them into the user's repository would make them visible to
+  // their `git fsck`, compete with their staging, and vanish on their next
+  // `git gc`.
+  let shadow: Promise<CheckpointStore | null> | undefined
+  const checkpointStore = (): Promise<CheckpointStore | null> => {
+    shadow ??= gitRunner().then((git) => {
+      if (git === null) return null
+      return new CheckpointStore(git, config.checkpointHome ?? dshHomePath(CHECKPOINT_DIRECTORY))
+    })
+    return shadow
+  }
+  const service: WorkspaceChanges = {
+    summary: (sessionId, seq) => byId.get(sessionId)?.summary(seq),
+    diff: (sessionId, seq, index, signal) => byId.get(sessionId)?.diff(seq, index, signal) ?? Promise.resolve(undefined),
+    restoreTurn: async (sessionId, turn, signal) => await restoreTurn(sessionId, turn, signal),
+  }
+  /**
+   * Write one turn's start state back over its working directory.
+   * @param sessionId - Session whose turn is undone.
+   * @param turn - turn to return to its start.
+   * @param signal - cancellation.
+   * @returns the written and removed paths, or undefined without a checkpoint.
+   */
+  async function restoreTurn(sessionId: SessionId, turn: number, signal: AbortSignal): Promise<readonly string[] | undefined> {
+    const cwd = cwds.get(sessionId)
+    const store = await checkpointStore()
+    if (cwd === undefined || store === null) return undefined
+    const shadow = await store.open(cwd, signal)
+    const checkpoint = await store.read(shadow, checkpointRef(sessionId, turn), signal)
+    if (checkpoint === undefined) return undefined
+    return await store.restore(shadow, checkpoint, signal)
+  }
+  ctx.provide('workspaceChanges', service)
   const recorderFor = (session: Session, cwd: string): TurnRecorder => {
     let recorder = recorders.get(session)
     if (recorder === undefined) {
@@ -139,6 +195,7 @@ export function apply(ctx: Context, config: Config): void {
       })
       recorders.set(session, recorder)
       byId.set(session.id, recorder)
+      cwds.set(session.id, cwd)
     }
     return recorder
   }
@@ -149,7 +206,13 @@ export function apply(ctx: Context, config: Config): void {
       return
     }
     if (event.type === 'tool/result') recorders.get(session)?.observe(event)
-    else if (event.type === 'turn/end') recorders.get(session)?.end(event.data.turn)
+    else if (event.type === 'turn/end') {
+      // A turn the Host checkpointed is restorable, and only the record built
+      // here knows that, so the fact is handed over rather than set later.
+      const key = `${session.id}:${event.data.turn}`
+      recorders.get(session)?.end(event.data.turn, restorable.has(key))
+      restorable.delete(key)
+    }
   })
   ctx.on('session/disposed', (session) => { void forget(session) })
   ctx.on('agent/turn-stopping', async ({ agent, turn }) => {
@@ -183,6 +246,39 @@ export function apply(ctx: Context, config: Config): void {
       mutations.set(exec, recorder)
       await recorder.settled()
     }
+    if (session !== undefined && MUTATING_TOOLS.has(exec.name)) await checkpointBefore(session, exec.name)
     return next()
   })
+  /**
+   * Record the working directory before a mutating call so its turn can be undone.
+   *
+   * A checkpoint that fails never blocks the call: the user asked for the edit,
+   * and losing the ability to undo it is not a reason to refuse it. The failure
+   * is logged, and restore reports no checkpoint for that turn.
+   * @param session - Session the call belongs to.
+   * @param toolName - the mutating tool, recorded in the log message only.
+   */
+  async function checkpointBefore(session: Session, toolName: string): Promise<void> {
+    const cwd = cwds.get(session.id)
+    const turn = recorders.get(session)?.openTurn
+    if (cwd === undefined || turn === undefined) return
+    const store = await checkpointStore()
+    if (store === null) return
+    try {
+      const shadow = await store.open(cwd, lifetime.signal)
+      const ref = checkpointRef(session.id, turn)
+      // One checkpoint per turn is what restore addresses, and re-recording it on
+      // every call in the turn would only move it forward past earlier edits.
+      if (await store.read(shadow, ref, lifetime.signal) !== undefined) return
+      const captured = await store.capture(shadow, ref, lifetime.signal)
+      if (captured === undefined) {
+        ctx.logger.warn(`checkpoint: could not record ${cwd} before ${toolName}`)
+        return
+      }
+      restorable.add(`${session.id}:${turn}`)
+      session.append('workspace/checkpoint', { turn })
+    } catch (error: unknown) {
+      ctx.logger.warn(`checkpoint: recording before ${toolName} failed: ${String(error)}`)
+    }
+  }
 }

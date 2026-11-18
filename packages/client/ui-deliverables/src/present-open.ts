@@ -8,7 +8,9 @@ import { remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-session-query'
 import type { SessionId, SessionSeq } from '@deepseek-ai/dsh-session'
-import { CHANGES_DIFF_PATH, CHANGES_OPEN_PATH, CHANGED_FILES_PATH, type ChangesSummary } from './changes.ts'
+import {
+  CHANGES_DIFF_PATH, CHANGES_OPEN_PATH, CHANGES_RESTORE_PATH, CHANGED_FILES_PATH,
+} from './changes.ts'
 import { isPresentedData, isPresentedFile, PRESENT_OPEN_PATH, PRESENT_HOST_PATH, type PresentedHost } from './presented.ts'
 
 /**
@@ -34,7 +36,8 @@ export function registerPresentOpen(ctx: Context): void {
     await Promise.allSettled(pending)
   })
   const routes = [
-    [PRESENT_OPEN_PATH, ['GET', 'POST'], handlePresentOpen], [CHANGES_OPEN_PATH, ['GET', 'POST'], handleChangesOpen], [CHANGES_DIFF_PATH, ['GET'], handleChangesDiff],
+    [PRESENT_OPEN_PATH, ['GET', 'POST'], handlePresentOpen], [CHANGES_OPEN_PATH, ['GET', 'POST'], handleChangesOpen],
+    [CHANGES_DIFF_PATH, ['GET'], handleChangesDiff], [CHANGES_RESTORE_PATH, ['POST'], handleChangesRestore],
   ] as const
   for (const [path, methods, handler] of routes) {
     ctx.connection.fetch.register({
@@ -135,8 +138,9 @@ function handleChangesSummary(ctx: Context, request: Request): Response {
   if (!id || seq === undefined) return new Response('Invalid change summary coordinates.', { status: 400 })
   const summary = ctx.workspaceChanges.summary(id as SessionId, seq)
   if (summary === undefined) return new Response('Change summary unavailable.', { status: 404 })
-  const { turn, files, total, added, deleted } = summary
-  return Response.json({ turn, files, total, added, deleted } satisfies ChangesSummary, { headers: { 'cache-control': 'no-store' } })
+  const { turn, files, total, added, deleted, restorable } = summary
+  return Response.json({ turn, files, total, added, deleted, restorable: restorable === true },
+    { headers: { 'cache-control': 'no-store' } })
 }
 
 /** A changed file's coordinates from a route query, or the 400 to answer with. */
@@ -161,6 +165,28 @@ async function handleChangesDiff(ctx: Context, request: Request): Promise<Respon
   } catch (error: unknown) {
     request.signal.throwIfAborted()
     return new Response('Change comparison unavailable.', { status: failureStatus(error) })
+  }
+}
+
+/**
+ * Undo one turn by writing its start state back over the working directory.
+ *
+ * A POST because it writes files, behind the same authenticated fence as every
+ * other changes route. The shadow repository the snapshot comes from is the
+ * Host's own, so the user's repository is never involved.
+ */
+async function handleChangesRestore(ctx: Context, request: Request): Promise<Response> {
+  const query = new URL(request.url).searchParams
+  const id = query.get('sessionId')
+  const turn = coordinate(query.get('turn'))
+  if (id === null || turn === undefined) return new Response('Invalid restore coordinates.', { status: 400 })
+  try {
+    const paths = await ctx.workspaceChanges.restoreTurn(id as SessionId, turn, request.signal)
+    if (paths === undefined) return new Response('No checkpoint for this turn.', { status: 404 })
+    return Response.json({ paths }, { headers: { 'cache-control': 'no-store' } })
+  } catch (error: unknown) {
+    request.signal.throwIfAborted()
+    return new Response(`Restore failed: ${error instanceof Error ? error.message : String(error)}`, { status: 500 })
   }
 }
 

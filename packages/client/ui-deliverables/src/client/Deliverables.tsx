@@ -10,7 +10,7 @@ import type { ChangesSummaryStore } from './changes-summary.ts'
 import { ChangedFiles } from './ChangedFiles.tsx'
 import { changesForClosing, presentedForClosing, type ChangesTurnData, type PresentedPath } from './turn-deliverables.ts'
 import type { NS } from './locales.ts'
-import { changesSummaryUrl, type ChangesReviewCoordinates } from '../changes.ts'
+import { changesRestoreUrl, changesSummaryUrl, type ChangesReviewCoordinates } from '../changes.ts'
 import { presentedFileUrl } from '../presented.ts'
 import { PresentedFileCard } from './PresentedFileCard.tsx'
 import css from './Deliverables.module.css'
@@ -95,7 +95,11 @@ export function Deliverables({
   return <>
     {changes !== null && <ChangedFiles changes={changes} cwd={cwd} t={t}
       sessionId={sessionId} useChangesDiff={useChangesDiff} loadChangesDiff={loadChangesDiff}
-      openReview={(index) => { openChangesReview({ sessionId, seq: changes.seq, turn: changes.turn }, index) }} />}
+      openReview={(index) => { openChangesReview({ sessionId, seq: changes.seq, turn: changes.turn }, index) }}
+      onUndo={(changes as { restorable?: boolean }).restorable === true ? async () => {
+        const response = await fetch(changesRestoreUrl(sessionId, changes.turn), { method: 'POST' })
+        if (!response.ok) throw new Error(await response.text())
+      } : undefined} />}
     {matched.presented.length > 0 && <div
       className={css.root}
       data-after-changes={changes !== null || undefined}

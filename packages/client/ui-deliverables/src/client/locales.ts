@@ -62,6 +62,11 @@ export const zh = {
   'diff.unchanged': '两侧内容相同',
   'diff.coarse': '逐行对比超时，按整个文件替换显示',
   'diff.truncated': '只显示前 {count} 行',
+  'changes.undo': '撤销本轮改动',
+  'changes.undoAction': '撤销',
+  'changes.undoAria': '撤销本轮的全部文件改动',
+  'changes.undoDone': '已撤销 {count} 个文件',
+  'changes.undoFailed': '无法撤销本轮改动',
 }
 
 /** English dictionary (same key set). */
@@ -123,6 +128,11 @@ export const en: Record<DeliverablesKey, string> = {
   'diff.unchanged': 'Both sides hold the same lines',
   'diff.coarse': 'Line comparison timed out; shown as a whole-file replacement',
   'diff.truncated': 'Showing the first {count} lines',
+  'changes.undo': 'Undo this turn',
+  'changes.undoAction': 'Undo',
+  'changes.undoAria': 'Undo every file change of this turn',
+  'changes.undoDone': 'Restored {count} files',
+  'changes.undoFailed': 'Could not undo this turn',
 }
 
 /** Union of this namespace's dictionary keys. */
@@ -187,6 +197,11 @@ export const ja = {
   'diff.unchanged': '両方の行内容が同一です',
   'diff.coarse': '行比較がタイムアウトしたため、ファイル全体の置換として表示しています',
   'diff.truncated': '最初の{count}行を表示',
+  'changes.undo': 'このターンを取り消す',
+  'changes.undoAction': '取り消す',
+  'changes.undoAria': 'このターンのすべてのファイル変更を取り消す',
+  'changes.undoDone': '{count} 個のファイルを復元しました',
+  'changes.undoFailed': 'このターンを取り消せませんでした',
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -248,6 +263,11 @@ export const es = {
   'diff.unchanged': 'Ambos lados mantienen las mismas líneas.',
   'diff.coarse': 'Se agotó el tiempo de espera para la comparación de líneas; se muestra como un reemplazo de archivo completo',
   'diff.truncated': 'Mostrando las primeras líneas {count}',
+  'changes.undo': 'Deshacer este turno',
+  'changes.undoAction': 'Deshacer',
+  'changes.undoAria': 'Deshacer todos los cambios de archivos de este turno',
+  'changes.undoDone': 'Se restauraron {count} archivos',
+  'changes.undoFailed': 'No se pudo deshacer este turno',
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -309,6 +329,11 @@ export const fr = {
   'diff.unchanged': 'Les deux côtés tiennent les mêmes lignes',
   'diff.coarse': "La comparaison de lignes a expiré ; affiché en remplacement de l'ensemble du fichier",
   'diff.truncated': 'Affichage des premières lignes {count}',
+  'changes.undo': 'Annuler ce tour',
+  'changes.undoAction': 'Annuler',
+  'changes.undoAria': 'Annuler toutes les modifications de fichiers de ce tour',
+  'changes.undoDone': '{count} fichiers restaurés',
+  'changes.undoFailed': 'Impossible d’annuler ce tour',
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -370,6 +395,11 @@ export const de = {
   'diff.unchanged': 'Beide Seiten vertreten die gleichen Linien',
   'diff.coarse': 'Zeitüberschreitung beim Leitungsvergleich; wird als vollständige Dateiersetzung angezeigt',
   'diff.truncated': 'Zeigt die ersten {count}-Zeilen',
+  'changes.undo': 'Diesen Durchlauf rückgängig machen',
+  'changes.undoAction': 'Rückgängig',
+  'changes.undoAria': 'Alle Dateiänderungen dieses Durchlaufs rückgängig machen',
+  'changes.undoDone': '{count} Dateien wiederhergestellt',
+  'changes.undoFailed': 'Dieser Durchlauf konnte nicht rückgängig gemacht werden',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -431,6 +461,11 @@ export const ru = {
   'diff.unchanged': 'Обе стороны держат одни и те же линии',
   'diff.coarse': 'Время сравнения строк истекло; отображается как замена всего файла',
   'diff.truncated': 'Показаны первые строки {count}',
+  'changes.undo': 'Отменить этот ход',
+  'changes.undoAction': 'Отменить',
+  'changes.undoAria': 'Отменить все изменения файлов этого хода',
+  'changes.undoDone': 'Восстановлено файлов: {count}',
+  'changes.undoFailed': 'Не удалось отменить этот ход',
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -492,4 +527,9 @@ export const pt = {
   'diff.unchanged': 'Ambos os lados mantêm as mesmas linhas',
   'diff.coarse': 'A comparação de linha expirou; mostrado como uma substituição de arquivo inteiro',
   'diff.truncated': 'Mostrando as primeiras {count} linhas',
+  'changes.undo': 'Desfazer este turno',
+  'changes.undoAction': 'Desfazer',
+  'changes.undoAria': 'Desfazer todas as alterações de arquivos deste turno',
+  'changes.undoDone': '{count} arquivos restaurados',
+  'changes.undoFailed': 'Não foi possível desfazer este turno',
 } satisfies Record<keyof typeof en, string>

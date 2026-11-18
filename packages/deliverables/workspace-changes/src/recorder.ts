@@ -116,6 +116,16 @@ export class TurnRecorder {
   private scratch: Promise<string> | undefined
   /** Records by the sequence of the event that announced them. */
   private readonly records = new Map<number, TurnRecord>()
+  /** Whether the turn now being recorded has a checkpoint to restore to. */
+  private restorable = false
+
+  /**
+   * The turn this recorder is inside now.
+   * @returns the open turn number; undefined before the first `turn/start`.
+   */
+  get openTurn(): number | undefined {
+    return this.state.turn
+  }
   private readonly lifetime = new AbortController()
 
   constructor(
@@ -187,10 +197,12 @@ export class TurnRecorder {
   /**
    * Record after `turn/end` unless a record was already attempted after the turn's last tool result.
    * @param turn - the turn number from `turn/end`.
+   * @param restorable - whether the Host holds a checkpoint this turn can be restored to.
    */
-  end(turn: number): void {
+  end(turn: number, restorable: boolean): void {
     const state = this.state
     if (turn !== state.turn || state.attemptedAfterSeq >= state.lastToolResultSeq) return
+    this.restorable = restorable
     void this.enqueue(signal => this.record(state, signal))
   }
 
@@ -207,6 +219,8 @@ export class TurnRecorder {
   summary(seq: number): WorkspaceChangesSummary | undefined {
     return this.records.get(seq)?.summary
   }
+
+  /**
 
   /**
    * Compare one listed file's contents at turn start and turn end.
@@ -359,6 +373,7 @@ export class TurnRecorder {
         added: sorted.reduce((sum, entry) => sum + entry.file.added, 0),
         deleted: sorted.reduce((sum, entry) => sum + entry.file.deleted, 0),
         ...snapshot === undefined ? {} : { snapshot },
+        ...this.restorable ? { restorable: true } : {},
       },
       sources: kept.map(entry => entry.sources),
     })

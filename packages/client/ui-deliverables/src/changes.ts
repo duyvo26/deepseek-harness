@@ -11,6 +11,9 @@ export const CHANGES_DIFF_PATH = '/api/changes.diff'
 /** Authenticated POST route for opening a changed file on the Host desktop. */
 export const CHANGES_OPEN_PATH = '/api/changes.open'
 
+/** Authenticated POST route returning a turn to the state it started from. */
+export const CHANGES_RESTORE_PATH = '/api/changes.restore'
+
 /**
  * Browser-relative form of {@link CHANGED_FILES_PATH}; see
  * .agents/notes/implemented/architecture/2026-09-14-web-document-relative-app-routes.md.
@@ -23,11 +26,16 @@ export const CHANGES_DIFF_ROUTE = CHANGES_DIFF_PATH.slice(1)
 /** Browser-relative form of {@link CHANGES_OPEN_PATH}. */
 export const CHANGES_OPEN_ROUTE = CHANGES_OPEN_PATH.slice(1)
 
+/** Browser-relative form of {@link CHANGES_RESTORE_PATH}. */
+export const CHANGES_RESTORE_ROUTE = CHANGES_RESTORE_PATH.slice(1)
+
 /** Resource-address prefix of a turn's review tab in the right Sidebar. */
 export const CHANGES_REVIEW_ADDRESS = 'dsh-resource://changes-review/session/'
 
 /** The summary fields the route serves; the Host keeps the working directory and snapshot ids to itself. */
-export type ChangesSummary = Pick<WorkspaceChangesSummary, 'turn' | 'files' | 'total' | 'added' | 'deleted'>
+export type ChangesSummary =
+  Pick<WorkspaceChangesSummary, 'turn' | 'files' | 'total' | 'added' | 'deleted'>
+  & Pick<NonNullable<WorkspaceChangesSummary['restorable']> extends never ? never : WorkspaceChangesSummary, 'restorable'>
 
 /** The comparison the route serves, as the Host computed it. */
 export type ChangesDiff = WorkspaceFileDiff
@@ -64,9 +72,10 @@ export function isChangedFile(value: unknown): value is WorkspaceChangedFile {
  */
 export function isChangesSummary(value: unknown): value is ChangesSummary {
   if (!isRecord(value)) return false
-  const { turn, files, total, added, deleted } = value
+  const { turn, files, total, added, deleted, restorable } = value
   return Number.isSafeInteger(turn) && (turn as number) >= 1 && Number.isSafeInteger(total)
     && Number.isSafeInteger(added) && Number.isSafeInteger(deleted)
+    && (restorable === undefined || typeof restorable === 'boolean')
     && Array.isArray(files) && files.every(isChangedFile)
 }
 
@@ -162,4 +171,23 @@ export function parseChangesReviewAddress(address: string): ChangesReviewCoordin
     // A malformed percent sequence is not an address this package minted.
     return undefined
   }
+}
+
+/**
+ * Build the document-relative route that undoes one turn.
+ * @param sessionId - owning Session.
+ * @param turn - the turn to return to its start.
+ * @returns the restore route with its query string.
+ */
+export function changesRestoreUrl(sessionId: SessionId, turn: number): string {
+  return `${CHANGES_RESTORE_ROUTE}?${new URLSearchParams({ sessionId, turn: String(turn) })}`
+}
+
+/**
+ * Validate a restore answer.
+ * @param value - decoded JSON.
+ * @returns whether the value lists the written and removed paths.
+ */
+export function isChangesRestoreResult(value: unknown): value is { paths: readonly string[] } {
+  return isRecord(value) && Array.isArray(value.paths) && value.paths.every(path => typeof path === 'string')
 }
