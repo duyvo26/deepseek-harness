@@ -25,14 +25,13 @@ function lastContent(snapshot: ChatSnapshot, turn: number, skipWarning: boolean)
 
 /** Turn-local actions and feature tail over the Location index, independent of Assistant placement. */
 export const TurnTailNodeView = memo(function TurnTailNodeView({
-  node, openFile, forkAt, undoTurn, renderSlot, t, useAccess, useChat, usePerformanceUsage,
+  node, openFile, forkAt, renderSlot, t, useAccess, useChat, usePerformanceUsage,
 }: TurnTailNodeViewProps) {
   const detailed = usePerformanceUsage(mode => mode) === 'detailed'
   const forkAllowed = useAccess('session/fork')
   const data = node.data
   // The fork point is the event before the turn opened: `turn/start` itself is
   // part of the turn being undone, so a copy cut there would still be inside it.
-  const startSeq = useChat(snapshot => (snapshot.timeline.turns.get(data.turn)?.start?.seq ?? 1) - 1)
   const hasLaterChatNode = useChat(snapshot =>
     (lastContent(snapshot, data.turn, true)?.anchorSeq ?? -1) > (data.closing?.finalNode.seq ?? data.seq))
   const turn = node.location.kind === 'turn' || node.location.kind === 'step'
@@ -66,10 +65,6 @@ export const TurnTailNodeView = memo(function TurnTailNodeView({
         // turn/end seq it already has, and the Host cuts exactly there.
         onBranch={forkAllowed ? () => { forkAt(data.seq) } : undefined}
         branchUnavailable={data.branchUnavailable || hasLaterChatNode}
-        // Every turn is undoable, not only the last: undoing an earlier one
-        // drops the turns after it, which is what a user asking to undo that
-        // message means.
-        onUndo={forkAllowed ? () => { undoTurn(data.turn, startSeq) } : undefined}
         className={css.actions}
         extraActions={assistantActions}
         usageAction={detailed && data.tokenUsage !== undefined

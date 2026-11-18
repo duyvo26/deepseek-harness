@@ -140,26 +140,14 @@ describe('chat flow font-size axis', () => {
     expect(narrow).toMatch(/\.root \+ \.root \{[^}]*margin-left: 0/)
   })
 
-  it('non-latest turn tails hide the whole actions row until hover or focus', () => {
-    // TurnTailNodeView tags its root data-actions-reveal='hover' for every
-    // turn but the latest; the gate lives under @media (hover: hover) so
-    // no-hover devices keep the row visible. 'always' has no rule at all —
-    // absence, not an override, keeps the latest turn's row shown.
+  it('keeps every actions row visible instead of hiding it behind hover', () => {
+    // Hiding a row's controls makes a user hunt for them; the sheet carries no
+    // opacity gate at all, so the row is visible wherever it renders.
     const css = read('MessageIconActions.module.css')
-    expect(css).toContain("[data-actions-reveal='hover'] .actions,")
-    expect(css).toMatch(/\) \.actions \{\s*opacity: 0/)
-    expect(css).toContain("[data-actions-reveal='hover']:hover .actions,")
-    expect(css).toContain("[data-actions-reveal='hover']:focus-within .actions,")
-    expect(css).toMatch(/\):focus-within \.actions \{\s*opacity: 1/)
-    expect(css).not.toContain("[data-actions-reveal='always']")
-  })
-
-  it('uses flow sibling selectors to reveal only the latest user-authored row', () => {
-    const css = read('MessageIconActions.module.css')
-    const userKinds = ":is([data-chat-flow-kind='user'], [data-chat-flow-kind='steering'])"
-    expect(css).toContain(`${userKinds}:has(\n    ~ ${userKinds}\n  ) .actions`)
-    expect(css).toContain('):hover .actions')
-    expect(css).toContain('):focus-within .actions')
+    expect(css).not.toContain('data-actions-reveal')
+    expect(css).not.toContain(':hover .actions')
+    // The only opacity left is the disabled-control dimming, not a reveal gate.
+    expect(css).not.toMatch(/\.actions[^{]*\{[^}]*opacity/)
   })
 
   it('keeps empty outer Seats in flow without adding height or sibling gaps', () => {

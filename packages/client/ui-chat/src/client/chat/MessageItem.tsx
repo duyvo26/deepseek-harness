@@ -330,12 +330,28 @@ export function PendingSubmissionBubble({ submission, loadImage, renderFactorySl
  * bubble without asking for it.
  */
 export const UserMessageNodeView = memo(function UserMessageNodeView({
-  node, renderFactorySlot, loadImage, renderSlotChain, t,
+  node, renderFactorySlot, loadImage, renderSlotChain, t, undoTurn,
 }: ChatNodeViewProps<'user' | 'steering'> & {
   /** Bound by the `user` keyed registration, the only entry that declares the seat. */
   renderSlotChain: PropsRenderSlots<'conversation.chat.user.before'>['renderSlotChain']
+  /**
+   * Undo the turn this message opened.
+   *
+   * A user message is where a turn starts, so undo belongs to it rather than to
+   * the assistant reply that happened to end the turn.
+   * @param turn - the turn to undo.
+   * @param startSeq - event sequence just before the turn.
+   */
+  undoTurn: (turn: number, startSeq: number) => void
 }) {
   const data = node.data
+  const turnOf = node.location.kind === 'turn' || node.location.kind === 'step' ? node.location.turn : undefined
+  // Both facts come from the same Turn: without a recorded start there is no
+  // fork point, and the row offers no undo.
+  const startSeq = turnOf?.start?.seq
+  const undoHere = turnOf === undefined || startSeq === undefined
+    ? undefined
+    : () => { undoTurn(turnOf.turn, Math.max(0, startSeq - 1)) }
   return (
     <UserStyleBubble
       node={node}
@@ -353,6 +369,7 @@ export const UserMessageNodeView = memo(function UserMessageNodeView({
           time={data.time}
           clock="start"
           className={css.actions}
+          onUndo={undoHere}
           t={t}
         />
       )}

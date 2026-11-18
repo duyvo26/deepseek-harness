@@ -2147,24 +2147,24 @@ describe('ChatView', () => {
     expect(h.forkAt).toHaveBeenCalledWith(3)
   }))
 
-  it('offers undo on every turn, pointing at the turn the message belongs to', () => {
-    const snapshot = chatSnapshotFixture({
-      nodes: [user(1, 'question'), assistant(2, 'answer')],
+  it('offers undo on the user message that opened the turn', () => {
+    // The message must sit inside a Turn with a recorded start: undo addresses
+    // the Turn it opened and forks from the event before that start.
+    const h = makeHarness({
+      nodes: [userInTurn(1, 'question', 1), assistant(3, 'answer')],
+      turnTimings: new Map([[1, { startTime: 1_000, endTime: 2_000 }]]),
       turnEnds: new Map([[1, 4]]),
     })
-    const h = makeHarness({}, {}, snapshot)
     const view = render(<h.ChatView {...h.props} />)
-    const undo = view.getByRole('button', { name: h.props.t('message.undo') })
-    fireEvent.click(undo)
-    // Undo addresses the turn, and the fork point is the event before it opened:
-    // turn/start belongs to the turn being removed.
-    expect(h.undoTurn).toHaveBeenCalledWith(1, 0)
-    // Undo sits right after Copy, before plugin-contributed actions and Branch:
-    // the row reads copy, undo, then the actions that change the conversation.
-    const labels = [...view.container.querySelectorAll('[data-turn-tail] button')]
-      .map(button => button.getAttribute('aria-label'))
-    const copy = labels.indexOf(h.props.t('copy'))
-    expect(labels.indexOf(h.props.t('message.undo'))).toBe(copy + 1)
+    // A user message is where a turn starts, so undo belongs beside its Copy,
+    // not on the assistant reply that happened to end the turn.
+    const userRow = view.container.querySelector('[data-chat-flow-kind="user"]')!
+    const labels = [...userRow.querySelectorAll('button')].map(button => button.getAttribute('aria-label'))
+    expect(labels.indexOf(h.props.t('message.undo'))).toBe(labels.indexOf(h.props.t('copy')) + 1)
+    fireEvent.click(view.getByRole('button', { name: h.props.t('message.undo') }))
+    // The fork point is the event before the turn opened: `turn/start` belongs to
+    // the turn being removed. The fixture records that start at seq 3.
+    expect(h.undoTurn).toHaveBeenCalledWith(1, 2)
   })
 
   it('keeps pending file mentions non-interactive until admission enables the reference injector', () => {
