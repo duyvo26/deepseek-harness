@@ -309,23 +309,6 @@ function buildGroup(
   return { key, workspaceId, cwd, createdAt, isGlobal, label, sessions: [...members] }
 }
 
-/** Apply a stored Ungrouped order and append newly loose Sessions by recency. */
-function orderedUngrouped(
-  members: readonly SessionSummary[],
-  stored: readonly string[] | undefined,
-  summaries: SessionListState['byId'],
-): SessionSummary[] {
-  const byId = new Map(members.map(session => [session.id as string, session]))
-  const ids = stored === undefined
-    ? orderByRecency(members.map(session => session.id), summaries)
-    : reconcileManualOrder(members.map(session => session.id), stored, summaries)
-  return ids.flatMap((id) => {
-    const session = byId.get(id)
-    /* v8 ignore next -- ids are projected exclusively from the members used to build byId. */
-    return session === undefined ? [] : [session]
-  })
-}
-
 /**
  * Group Sessions by Workspace: one group per caller-ordered entity, with
  * members resolved from caller-ordered sessionIds. Sessions outside every
@@ -337,7 +320,6 @@ function groupByWorkspace(
   workspaces: readonly WorkspaceView[],
   archived: ReadonlySet<SessionId>,
   archivedFilter: ArchivedFilter,
-  ungroupedOrder: readonly string[] | undefined,
 ): Group[] {
   const current = mainSessionId(list)
   const groups: Group[] = []
@@ -359,21 +341,9 @@ function groupByWorkspace(
       Date.parse(workspace.createdAt), workspace.isGlobal, workspace.title, members,
     ))
   }
-  const stray = list.ids
-    .map(id => list.byId[id])
-    .filter((s): s is SessionSummary =>
-      s !== undefined && !accounted.has(s.id) && sessionVisible(s, current, archived, archivedFilter))
-  if (stray.length > 0) {
-    groups.push(buildGroup(
-      UNGROUPED_KEY,
-      undefined,
-      undefined,
-      undefined,
-      false,
-      '',
-      orderedUngrouped(stray, ungroupedOrder, list.byId),
-    ))
-  }
+  // A Session belonging to no Workspace is not listed here: the sidebar shows only
+  // the Sessions a Workspace accounts for, and Settings offers these to file under
+  // Global.
   return groups
 }
 
@@ -452,7 +422,7 @@ export function deriveGroups(
     ? undefined
     : owningGroupKey(workspaces, current)
   const groups: GroupNode[] = []
-  for (const g of groupByWorkspace(list, workspaces, archived, rowState.archivedFilter, view.ungroupedOrder)) {
+  for (const g of groupByWorkspace(list, workspaces, archived, rowState.archivedFilter)) {
     const expanded = expandedGroups.has(g.key)
     groups.push({
       key: g.key,

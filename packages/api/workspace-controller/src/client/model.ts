@@ -7,6 +7,7 @@ import type { RemoteFailure, RemoteResult, TypertClientRemote } from '@deepseek-
 import type {
   WorkspaceArchiveSessionRequest,
   WorkspaceArchiveValue,
+  WorkspaceAdoptSessionRequest,
   WorkspaceBaseline,
   WorkspaceCreateRequest,
   WorkspaceCreateValue,
@@ -214,6 +215,17 @@ export class ClientWorkspaceModel implements WorkspaceFollowSink {
       this.installPinned(this.pinnedSessionIds.filter(id => id !== sessionId))
     }
     return result
+  }
+
+  /**
+   * File one stray Session under the shared Global Workspace.
+   * @param sessionId - Session to adopt.
+   * @returns generated Remote result carrying the Workspace the Session joined.
+   */
+  async adoptSession(
+    sessionId: WorkspaceAdoptSessionRequest['sessionId'],
+  ): Promise<RemoteResult<WorkspaceValue>> {
+    return await this.remote.adoptSession({ sessionId })
   }
 
   /**

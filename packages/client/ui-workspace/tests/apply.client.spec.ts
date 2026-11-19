@@ -338,6 +338,13 @@ describe('ui-workspace apply', () => {
       getSnapshot: () => readonly unknown[]
     } } })().hooks
     expect(hooks.archivedSessions.getSnapshot()).toBe(hooks.archivedSessions.getSnapshot())
+    // A Session no Workspace accounts for is reachable from Settings instead.
+    expect(b.slots.entries('settings.section').map(entry => entry.options.id)).toContain('unfiled-sessions')
+    const unfiled = b.slots.entries('settings.section').find(entry => entry.options.id === 'unfiled-sessions')!
+    const unfiledHooks = (unfiled.inject as () => { hooks: { unfiledSessions: {
+      getSnapshot: () => readonly unknown[]
+    } } })().hooks
+    expect(unfiledHooks.unfiledSessions.getSnapshot()).toBe(unfiledHooks.unfiledSessions.getSnapshot())
     expect(b.slots.spec('sidebar.session.row.trailing')).toEqual({ kind: 'list', scope: 'root', inline: true })
     expect(b.slots.spec('sidebar.session.row.leading')).toEqual({ kind: 'list', scope: 'root', inline: true })
 

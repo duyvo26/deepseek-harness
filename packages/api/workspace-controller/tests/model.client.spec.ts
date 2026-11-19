@@ -3,6 +3,7 @@ import {
   ClientWorkspaceModel, type WorkspaceRemote,
 } from '../src/client/index.ts'
 import type {
+  WorkspaceAdoptSessionRequest,
   WorkspaceArchiveSessionRequest,
   WorkspaceArchiveValue,
   WorkspaceCreateRequest,
@@ -140,6 +141,14 @@ class FakeWorkspaceRemote implements WorkspaceRemote {
   archiveSession(request: WorkspaceArchiveSessionRequest): Promise<RemoteResult<WorkspaceArchiveValue>> {
     this.record('archiveSession', request)
     return this.onArchiveSession(request)
+  }
+
+  onAdoptSession: (request: WorkspaceAdoptSessionRequest) => Promise<RemoteResult<WorkspaceValue>> =
+    () => Promise.resolve(remoteOk({ workspace: workspace('global') }))
+
+  adoptSession(request: WorkspaceAdoptSessionRequest): Promise<RemoteResult<WorkspaceValue>> {
+    this.record('adoptSession', request)
+    return this.onAdoptSession(request)
   }
 
   unarchiveSession(request: WorkspaceUnarchiveSessionRequest): Promise<RemoteResult<WorkspaceArchiveValue>> {

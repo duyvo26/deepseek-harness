@@ -50,6 +50,8 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
       readonly sessionId: SessionId
       readonly activity: readonly SessionActivity[]
     }
+    /** The Session cannot join the shared Global Workspace. */
+    'workspace/adopt-failed': { readonly sessionId: SessionId; readonly detail: string }
     /** The Session or its anchor is not in the Workspace's manual order. */
     'workspace/move-invalid': {
       readonly workspaceId: WorkspaceId
@@ -134,6 +136,11 @@ export interface WorkspaceArchiveSessionRequest {
    * set is durable.
    */
   readonly stopActivity?: boolean
+}
+
+/** Session requested to join the shared project-less Workspace. */
+export interface WorkspaceAdoptSessionRequest {
+  readonly sessionId: SessionId
 }
 
 /** Session requested for restoration from the archived Session list. */

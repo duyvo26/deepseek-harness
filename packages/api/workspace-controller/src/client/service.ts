@@ -93,6 +93,11 @@ export interface IWorkspaces {
    */
   archiveSession(sessionId: SessionId, options?: { readonly stopActivity?: boolean }): Promise<void>
   /**
+   * File a Session that belongs to no Workspace under the shared Global Workspace.
+   * @param sessionId - Session to adopt.
+   */
+  adoptSession(sessionId: SessionId): Promise<void>
+  /**
    * Unarchive a Session from the archived Session list.
    * @param sessionId - Session to unarchive.
    */
@@ -171,6 +176,11 @@ export class WorkspaceController extends Service implements IWorkspaces {
   async archiveSession(sessionId: SessionId, options: { readonly stopActivity?: boolean } = {}): Promise<void> {
     const result = await this.model.archiveSession(sessionId, options)
     if (!result.ok) throw new WorkspaceArchiveError(result.error)
+  }
+
+  async adoptSession(sessionId: SessionId): Promise<void> {
+    const result = await this.model.adoptSession(sessionId)
+    if (!result.ok) throw commandError('session adopt', result.error)
   }
 
   async unarchiveSession(sessionId: SessionId): Promise<void> {

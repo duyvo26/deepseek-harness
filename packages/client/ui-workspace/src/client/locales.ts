@@ -154,6 +154,9 @@ export const zh = {
   'archive.empty': '没有已归档的会话。',
   'archive.unarchive': '取消归档',
   'archive.delete': '删除',
+  'unfiled.nav': '未归档会话',
+  'unfiled.empty': '没有未归档的会话。',
+  'unfiled.adopt': '归入全局',
 } satisfies Record<string, string>
 
 /** The workspace namespace key union. */
@@ -309,6 +312,9 @@ export const en = {
   'archive.empty': 'No archived sessions.',
   'archive.unarchive': 'Unarchive',
   'archive.delete': 'Delete',
+  'unfiled.nav': 'Unfiled sessions',
+  'unfiled.empty': 'No unfiled sessions.',
+  'unfiled.adopt': 'Move to Global',
 } satisfies Record<WorkspaceKey, string>
 
 /** Japanese copy, checked against the English keys. */
@@ -461,6 +467,9 @@ export const ja = {
   'archive.empty': 'アーカイブ済みのセッションはありません。',
   'archive.unarchive': 'アーカイブ解除',
   'archive.delete': '削除',
+  'unfiled.nav': '未分類セッション',
+  'unfiled.empty': '未分類のセッションはありません。',
+  'unfiled.adopt': 'グローバルに移動',
 } satisfies Record<keyof typeof en, string>
 
 /** Spanish dictionary, checked against the English keys. */
@@ -613,6 +622,9 @@ export const es = {
   'archive.empty': 'No hay sesiones archivadas.',
   'archive.unarchive': 'Desarchivar',
   'archive.delete': 'Eliminar',
+  'unfiled.nav': 'Sesiones sin archivar',
+  'unfiled.empty': 'No hay sesiones sin archivar.',
+  'unfiled.adopt': 'Mover a Global',
 } satisfies Record<keyof typeof en, string>
 
 /** French dictionary, checked against the English keys. */
@@ -765,6 +777,9 @@ export const fr = {
   'archive.empty': 'Aucune session archivée.',
   'archive.unarchive': 'Désarchiver',
   'archive.delete': 'Supprimer',
+  'unfiled.nav': 'Sessions non classées',
+  'unfiled.empty': 'Aucune session non classée.',
+  'unfiled.adopt': 'Déplacer vers Global',
 } satisfies Record<keyof typeof en, string>
 
 /** German dictionary, checked against the English keys. */
@@ -917,6 +932,9 @@ export const de = {
   'archive.empty': 'Keine archivierten Sitzungen.',
   'archive.unarchive': 'Archivierung aufheben',
   'archive.delete': 'Löschen',
+  'unfiled.nav': 'Nicht zugeordnete Sitzungen',
+  'unfiled.empty': 'Keine nicht zugeordneten Sitzungen.',
+  'unfiled.adopt': 'Nach Global verschieben',
 } satisfies Record<keyof typeof en, string>
 
 /** Russian dictionary, checked against the English keys. */
@@ -1069,6 +1087,9 @@ export const ru = {
   'archive.empty': 'Архивных сеансов нет.',
   'archive.unarchive': 'Восстановить',
   'archive.delete': 'Удалить',
+  'unfiled.nav': 'Незакреплённые сеансы',
+  'unfiled.empty': 'Нет незакреплённых сеансов.',
+  'unfiled.adopt': 'Переместить в Global',
 } satisfies Record<keyof typeof en, string>
 
 /** Portuguese dictionary, checked against the English keys. */
@@ -1221,4 +1242,7 @@ export const pt = {
   'archive.empty': 'Nenhuma sessão arquivada.',
   'archive.unarchive': 'Desarquivar',
   'archive.delete': 'Excluir',
+  'unfiled.nav': 'Sessões não arquivadas',
+  'unfiled.empty': 'Nenhuma sessão não arquivada.',
+  'unfiled.adopt': 'Mover para Global',
 } satisfies Record<keyof typeof en, string>

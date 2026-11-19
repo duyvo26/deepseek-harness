@@ -58,6 +58,9 @@ import {
   ArchivedSessionsSection, type ArchivedSessionRow, type ArchivedSessionsSectionInjected,
 } from './rows/ArchivedSessionsSection.tsx'
 import { SessionDeleteDialog } from './rows/SessionDeleteDialog.tsx'
+import {
+  UnfiledSessionsSection, type UnfiledSessionRow, type UnfiledSessionsSectionInjected,
+} from './rows/UnfiledSessionsSection.tsx'
 import { WorkspaceBrowser } from './rows/WorkspaceBrowser.tsx'
 import { ArchiveSessionRowButton, SessionArchiveConfirmDialog } from './session-actions/ArchiveSession.tsx'
 import { derive } from './session-actions/derived.ts'
@@ -262,6 +265,36 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
       return () => { stopArchived(); stopSessions() }
     },
   }
+  // `useSyncExternalStore` compares snapshots by identity, so this list is built
+  // once per pair of source snapshots rather than on every read.
+  let unfiledRowsOf: { readonly ids: readonly SessionId[]; readonly accounted: unknown } | undefined
+  let unfiledRows: readonly UnfiledSessionRow[] = []
+  const unfiledSessions = {
+    getSnapshot: (): readonly UnfiledSessionRow[] => {
+      const list = sessions.list.getSnapshot()
+      const workspacesSnapshot = workspaces.list.getSnapshot()
+      const accounted = workspacesSnapshot.items
+      if (unfiledRowsOf?.ids === list.ids && unfiledRowsOf.accounted === accounted) return unfiledRows
+      const owned = new Set<string>()
+      for (const workspace of accounted) for (const id of workspace.sessionIds) owned.add(String(id))
+      const ids = list.ids.filter((id) => {
+        const summary = list.byId[id]
+        return summary !== undefined && summary.origin !== 'subagent' && !summary.blank
+          && !owned.has(String(id))
+      })
+      unfiledRowsOf = { ids: list.ids, accounted }
+      unfiledRows = ids.map(id => ({
+        sessionId: id,
+        displayTitle: list.byId[id]?.displayTitle ?? id,
+      }))
+      return unfiledRows
+    },
+    subscribe: (listener: () => void): (() => void) => {
+      const stopSessions = sessions.list.subscribe(listener)
+      const stopWorkspaces = workspaces.list.subscribe(listener)
+      return () => { stopSessions(); stopWorkspaces() }
+    },
+  }
   const markSession = (sessionId: SessionId, unread: boolean): void => {
     ctx.uiSession.sessionStatus.mark(sessionId, unread).catch(() => { notify({ kind: 'readingFailed' }) })
   }
@@ -358,6 +391,18 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
     locale: NS,
     inject: archivedSectionInjected,
   }, ArchivedSessionsSection))
+  const unfiledSectionInjected = (): UnfiledSessionsSectionInjected => ({
+    hooks: { unfiledSessions },
+    adopt: async (sessionId) => { await uiWorkspace.adoptSession(sessionId) },
+  })
+  ctx.slots.inject('settings.section', () => ctx.slots.register({
+    name: 'settings.section',
+    id: 'unfiled-sessions',
+    order: 41,
+    label: () => ctx.locale.bind(NS)('unfiled.nav'),
+    locale: NS,
+    inject: unfiledSectionInjected,
+  }, UnfiledSessionsSection))
   const deleteConfirmInjected = (): SessionDeleteConfirmInjected => ({
     hooks: { deleteRequest },
     settleSessionDelete: () => { deleteRequest.set(null) },

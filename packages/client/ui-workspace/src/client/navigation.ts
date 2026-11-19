@@ -111,6 +111,11 @@ export interface UiWorkspace {
    */
   archiveSession(sessionId: SessionId, options?: { readonly stopActivity?: boolean }): Promise<void>
   /**
+   * File a Session that belongs to no Workspace under the shared Global Workspace.
+   * @param sessionId - Session to adopt.
+   */
+  adoptSession(sessionId: SessionId): Promise<void>
+  /**
    * Unarchive a Session, restoring it to its recorded Workspace position.
    * @param sessionId - Session to unarchive.
    */
@@ -413,6 +418,13 @@ class UiWorkspaceService extends Service implements UiWorkspace {
   async archiveSession(sessionId: SessionId, options: { readonly stopActivity?: boolean } = {}): Promise<void> {
     await this.workspaces.archiveSession(sessionId, options)
     if (this.mainReference?.sessionId === sessionId) this.clearMain()
+  }
+
+  /**
+   * @param sessionId - Session to file under Global.
+   */
+  async adoptSession(sessionId: SessionId): Promise<void> {
+    await this.workspaces.adoptSession(sessionId)
   }
 
   async unarchiveSession(sessionId: SessionId): Promise<void> {

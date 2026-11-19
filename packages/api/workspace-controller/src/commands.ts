@@ -17,6 +17,7 @@ import type {
   WorkspaceArchiveSessionRequest,
   WorkspaceArchiveValue,
   WorkspaceCreateRequest,
+  WorkspaceAdoptSessionRequest,
   WorkspaceCreateValue,
   WorkspaceDeleteRequest,
   WorkspaceDeleteValue,
@@ -197,6 +198,29 @@ export class WorkspaceCommands {
   async unarchiveSession(request: WorkspaceUnarchiveSessionRequest): Promise<WorkspaceArchiveValue> {
     await this.ctx.workspaceRegistry.unarchiveSession(request.sessionId)
     return { archivedSessionIds: [...this.ctx.workspaceRegistry.archivedSessionIds] }
+  }
+
+  /**
+   * Add one stray Session to the shared project-less Workspace.
+   *
+   * A Session that belongs to no Workspace has no sidebar home once the browser
+   * stops rendering its ungrouped bucket, so adopting it is how that Session
+   * becomes reachable again.
+   * @param request - Session identity to adopt.
+   * @returns the Global Workspace projection the Session joined.
+   */
+  async adoptSession(request: WorkspaceAdoptSessionRequest): Promise<WorkspaceValue> {
+    const workspace = await this.ctx.workspaceRegistry.ensureGlobal()
+    try {
+      await workspace.attachSession(request.sessionId)
+    } catch (error) {
+      throw new RemoteError(
+        'workspace/adopt-failed',
+        `session "${request.sessionId}" could not join workspace "${workspace.id}": ${String(error)}`,
+        { sessionId: request.sessionId, detail: String(error) },
+      )
+    }
+    return { workspace: workspaceView(workspace) }
   }
 
   /**

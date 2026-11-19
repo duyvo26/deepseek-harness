@@ -172,14 +172,14 @@ function rerender(b: ReturnType<typeof mount>, overrides: Partial<WorkspaceBrows
 }
 
 describe('WorkspaceBrowser', () => {
-  it.each(['workspace', 'flat', 'ungrouped'] as const)('passes the standard menu factory through the %s list', (mode) => {
+  it.each(['workspace', 'flat'] as const)('passes the standard menu factory through the %s list', (mode) => {
     const preferences = createWorkspaceViewStore().create()
     preferences.actions.setGroupBy(mode === 'flat' ? 'flat' : 'workspace')
-    preferences.actions.setGroupExpanded(mode === 'ungrouped' ? UNGROUPED_KEY : 'alpha', true)
+    preferences.actions.setGroupExpanded('alpha', true)
     const renderFactorySlot = vi.fn(renderMenuButton)
     mount({
       useSessions: hook(sessionState([summary('session-one', 10)])),
-      useWorkspaces: hook(workspaceState(mode === 'ungrouped' ? [] : [workspace('alpha', ['session-one'])])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['session-one'])])),
       renderFactorySlot,
     })
     expect(renderFactorySlot).toHaveBeenCalledWith('contextMenu.button', {
@@ -228,11 +228,11 @@ describe('WorkspaceBrowser', () => {
     expect(bindScrollerRef).toHaveBeenLastCalledWith(null)
   })
 
-  it.each(['workspace', 'flat', 'ungrouped'] as const)('keeps %s recency independent of arrival order and saved manual positions', (mode) => {
+  it.each(['workspace', 'flat'] as const)('keeps %s recency independent of arrival order and saved manual positions', (mode) => {
     localStorage.clear()
     const preferences = createWorkspaceViewStore().create()
     preferences.actions.setGroupBy(mode === 'flat' ? 'flat' : 'workspace')
-    const account = mode === 'ungrouped' ? UNGROUPED_KEY : 'alpha'
+    const account = 'alpha'
     preferences.actions.setSessionOrder(account, ['older', 'newer'], {})
     preferences.actions.setSessionOrder(UNGROUPED_KEY, ['older', 'newer'], {})
     preferences.actions.setSessionOrder(FLAT_SESSION_ORDER_KEY, ['older', 'newer'], {})
@@ -241,7 +241,7 @@ describe('WorkspaceBrowser', () => {
     localStorage.setItem('dsh.workspace.view.v5', JSON.stringify({ ...preferences.getSnapshot(), orderBy: 'updated' }))
     const b = mount({
       useSessions: hook(sessionState([summary('newer', 100)])),
-      useWorkspaces: hook(workspaceState(mode === 'ungrouped' ? [] : [workspace(account, ['older', 'newer'])])),
+      useWorkspaces: hook(workspaceState([workspace(account, ['older', 'newer'])])),
     })
     const names = () => screen.getAllByRole('treeitem')
       .filter(row => row.getAttribute('aria-expanded') === null)
@@ -266,15 +266,15 @@ describe('WorkspaceBrowser', () => {
     expect(names()).toEqual(['newer', 'older'])
   })
 
-  it.each(['workspace', 'flat', 'ungrouped'] as const)('starts Manual from the current %s order and forgets discarded layouts', (mode) => {
+  it.each(['workspace', 'flat'] as const)('starts Manual from the current %s order and forgets discarded layouts', (mode) => {
     localStorage.clear()
     const preferences = createWorkspaceViewStore().create()
     preferences.actions.setGroupBy(mode === 'flat' ? 'flat' : 'workspace')
-    const account = mode === 'flat' ? FLAT_SESSION_ORDER_KEY : mode === 'ungrouped' ? UNGROUPED_KEY : 'alpha'
+    const account = mode === 'flat' ? FLAT_SESSION_ORDER_KEY : 'alpha'
     preferences.actions.setGroupExpanded(account, true)
     const b = mount({
       useSessions: hook(sessionState([summary('a', 30), summary('b', 20), summary('c', 10)])),
-      useWorkspaces: hook(workspaceState(mode === 'ungrouped' ? [] : [workspace('alpha', ['c', 'a', 'b'])])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['c', 'a', 'b'])])),
     })
     const names = () => screen.getAllByRole('treeitem').filter(row => row.getAttribute('aria-expanded') === null)
       .map(row => row.querySelector('[class*="title"]')?.textContent)
@@ -373,17 +373,17 @@ describe('WorkspaceBrowser', () => {
     }
   })
 
-  it.each(['workspace', 'flat', 'ungrouped'] as const)('%s Session hover card shows the Session directory with home as ~', (mode) => {
+  it.each(['workspace', 'flat'] as const)('%s Session hover card shows the Session directory with home as ~', (mode) => {
     vi.useFakeTimers()
     try {
       localStorage.clear()
       const preferences = createWorkspaceViewStore().create()
       preferences.actions.setGroupBy(mode === 'flat' ? 'flat' : 'workspace')
-      preferences.actions.setGroupExpanded(mode === 'ungrouped' ? UNGROUPED_KEY : 'alpha', true)
+      preferences.actions.setGroupExpanded('alpha', true)
       localStorage.setItem('dsh.workspace.view.v5', JSON.stringify(preferences.getSnapshot()))
       mount({
         useSessions: hook(sessionState([summary('located', 1, { cwd: '/home/u/Documents/project' })])),
-        useWorkspaces: hook(workspaceState(mode === 'ungrouped' ? [] : [workspace('alpha', ['located'])])),
+        useWorkspaces: hook(workspaceState([workspace('alpha', ['located'])])),
         useHostInfo: selector => selector({ home: '/home/u', isLoopback: true }),
       })
       fireEvent.pointerEnter(screen.getByText('located').closest('[role="treeitem"]')?.parentElement as HTMLElement)
@@ -414,12 +414,12 @@ describe('WorkspaceBrowser', () => {
     })
   })
 
-  it.each(['workspace', 'flat', 'ungrouped'] as const)('retains the new Session position through a %s Workspace reconnect', (mode) => {
-    const account = mode === 'flat' ? FLAT_SESSION_ORDER_KEY : mode === 'ungrouped' ? UNGROUPED_KEY : 'alpha'
+  it.each(['workspace', 'flat'] as const)('retains the new Session position through a %s Workspace reconnect', (mode) => {
+    const account = mode === 'flat' ? FLAT_SESSION_ORDER_KEY : 'alpha'
     const old = summary('old', 10)
     const absent = summary('absent', 5)
     const blank = summary('blank', 1, { blank: true })
-    const groups = (ids: string[]) => workspaceState(mode === 'ungrouped' ? [] : [workspace('alpha', ids)])
+    const groups = (ids: string[]) => workspaceState([workspace('alpha', ids)])
     const preferences = createWorkspaceViewStore().create()
     preferences.actions.setGroupBy(mode === 'flat' ? 'flat' : 'workspace')
     preferences.actions.setGroupExpanded(account, true)
@@ -1125,17 +1125,6 @@ describe('WorkspaceBrowser', () => {
     expect(startSession).toHaveBeenCalledWith(wid('alpha'))
   })
 
-  it('auto-expands the Ungrouped bucket for a loose current session; its header has neither menu nor ＋', () => {
-    mount({
-      useSessions: hook(sessionState([summary('loose', 1)], { main: sid('loose') })),
-      useWorkspaces: hook(workspaceState([workspace('alpha', [])])),
-    })
-    // The loose session's group is UNGROUPED_KEY: expanded by the effect.
-    expect(screen.getByText('loose')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '工作区“未分组”的操作' })).toBeNull()
-    expect(screen.queryByRole('button', { name: '在“未分组”中新建会话' })).toBeNull()
-  })
-
   it('keeps an already-expanded group when the selection moves within it', () => {
     const first = sessionState([summary('a', 2), summary('b', 1)], { main: sid('a') })
     const b = mount({
@@ -1181,13 +1170,13 @@ describe('WorkspaceBrowser', () => {
     expect(screen.queryByText('新会话')).toBeNull()
   })
 
-  it.each(['workspace', 'flat', 'ungrouped'] as const)('keeps a new blank first across %s mode switches and enables drag after the first prompt', (mode) => {
+  it.each(['workspace', 'flat'] as const)('keeps a new blank first across %s mode switches and enables drag after the first prompt', (mode) => {
     localStorage.clear()
     const preferences = createWorkspaceViewStore().create()
     preferences.actions.setGroupBy(mode === 'flat' ? 'flat' : 'workspace')
-    const account = mode === 'flat' ? FLAT_SESSION_ORDER_KEY : mode === 'ungrouped' ? UNGROUPED_KEY : 'alpha'
+    const account = mode === 'flat' ? FLAT_SESSION_ORDER_KEY : 'alpha'
     preferences.actions.setGroupExpanded(account, true)
-    const groups = (ids: string[]) => hook(workspaceState(mode === 'ungrouped' ? [] : [workspace('alpha', ids)]))
+    const groups = (ids: string[]) => hook(workspaceState([workspace('alpha', ids)]))
     const b = mount({
       useSessions: hook(sessionState([summary('old', 100), summary('mid', 200)])),
       useWorkspaces: groups(['old', 'mid']),
@@ -2097,54 +2086,6 @@ describe('WorkspaceBrowser', () => {
     fireEvent.dragEnd(three)
     expect(b.store.getSnapshot().sessionOrderByAccount[FLAT_SESSION_ORDER_KEY])
       .toEqual(['two', 'one', 'three'])
-  })
-
-  it('persists Ungrouped drag order in both modes', async () => {
-    const sessions = sessionState([summary('one', 3), summary('two', 2), summary('three', 1)])
-    const b = mount({
-      useSessions: hook(sessions),
-      useWorkspaces: hook(workspaceState([])),
-    })
-    fireEvent.click(screen.getByText('未分组'))
-
-    const dragAfter = (sourceTitle: string, targetTitle: string): void => {
-      const source = screen.getByText(sourceTitle).closest('[role="treeitem"]') as HTMLElement
-      const target = screen.getByText(targetTitle).closest('[role="treeitem"]') as HTMLElement
-      target.getBoundingClientRect = () => ({
-        top: 150, bottom: 184, left: 0, right: 200, width: 200, height: 34, x: 0, y: 150, toJSON: () => ({}),
-      })
-      fireEvent.dragStart(source, { dataTransfer: dragData() })
-      fireDrag(target, 'drop', 180)
-      fireEvent.dragEnd(source)
-    }
-
-    dragAfter('one', 'three')
-    expect(b.store.getSnapshot().sessionOrderByAccount[UNGROUPED_KEY]).toEqual(['two', 'three', 'one'])
-    dragAfter('two', 'one')
-    expect(b.store.getSnapshot().sessionOrderByAccount[UNGROUPED_KEY]).toEqual(['three', 'one', 'two'])
-
-    fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: '最近更新' }))
-    await waitFor(() => {
-      expect(screen.getAllByRole('treeitem').slice(1).map(row => row.textContent)).toEqual([
-        expect.stringContaining('one'), expect.stringContaining('two'), expect.stringContaining('three'),
-      ])
-      expect(b.store.getSnapshot().sessionOrderByAccount).toEqual({})
-    })
-    dragAfter('one', 'three')
-    expect(b.store.getSnapshot().sessionOrderByAccount[UNGROUPED_KEY]).toEqual(['two', 'three', 'one'])
-
-    b.view.unmount()
-    const restored = mount({
-      useSessions: hook(sessions),
-      useWorkspaces: hook(workspaceState([])),
-    })
-    expect(restored.store.getSnapshot().sessionOrderByAccount[UNGROUPED_KEY]).toEqual(['two', 'three', 'one'])
-    expect(screen.getAllByRole('treeitem').slice(1).map(row => row.textContent)).toEqual([
-      expect.stringContaining('two'),
-      expect.stringContaining('three'),
-      expect.stringContaining('one'),
-    ])
   })
 
   it('ignores a drag whose source left the group in flight', () => {

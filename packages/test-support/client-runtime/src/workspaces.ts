@@ -175,6 +175,14 @@ export class TestWorkspaces implements IWorkspaces {
    * observable effect: the id leaves the list state's archive set.
    * @param sessionId - session to unarchive.
    */
+  async adoptSession(sessionId: SessionId): Promise<void> {
+    this.calls.push({ method: 'adoptSession', args: [sessionId] })
+    const stub = this.stubs.get('adoptSession')
+    if (stub !== undefined) {
+      await (stub(sessionId) as Promise<void>)
+    }
+  }
+
   async unarchiveSession(sessionId: SessionId): Promise<void> {
     this.calls.push({ method: 'unarchiveSession', args: [sessionId] })
     const stub = this.stubs.get('unarchiveSession')

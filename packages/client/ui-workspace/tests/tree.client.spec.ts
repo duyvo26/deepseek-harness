@@ -118,7 +118,7 @@ describe('owningGroupKey', () => {
 })
 
 describe('Session ordering', () => {
-  it.each(['workspace', 'ungrouped', 'flat'] as const)('keeps the current New Session before pins in %s', (mode) => {
+  it.each(['workspace', 'flat'] as const)('keeps the current New Session before pins in %s', (mode) => {
     const sessions = withMain(list(
       summary('pin', 30),
       summary('ordinary', 20),
@@ -225,7 +225,7 @@ describe('Session ordering', () => {
       .toEqual(['source', 'orphan', 'self'])
   })
 
-  it.each(['workspace', 'ungrouped', 'flat'] as const)('keeps forks of pinned sources in the ordinary %s section', (mode) => {
+  it.each(['workspace', 'flat'] as const)('keeps forks of pinned sources in the ordinary %s section', (mode) => {
     const sessions = list(
       summary('source', 1), summary('other-pin', 2), summary('ordinary', 3),
       { ...summary('fork', 4), parentId: sid('source') },
@@ -297,52 +297,15 @@ describe('deriveGroups', () => {
     },
   )
 
-  it('puts only real unaccounted Sessions in the trailing Ungrouped group', () => {
+  it('leaves a Session no Workspace accounts for out of the sidebar', () => {
     const sessions = list(summary('owned', 1, '/projects/first'), summary('loose', 9, '/other'))
     const groups = deriveGroups(
-      sessions, [workspace('first', ['owned'])], noRows, noAttention, view([UNGROUPED_KEY]),
+      sessions, [workspace('first', ['owned'])], noRows, noAttention, view(['first']),
     )
-    expect(groups.map(group => group.key)).toEqual(['first', UNGROUPED_KEY])
-    expect(groups[1]!.sessions.map(session => session.id)).toEqual([sid('loose')])
-  })
-
-  it('applies stored Ungrouped order and appends new loose Sessions by recency', () => {
-    const sessions = list(summary('one', 3), summary('two', 2), summary('new', 4))
-    const groups = deriveGroups(
-      sessions,
-      [],
-      noRows,
-      noAttention,
-      view([UNGROUPED_KEY], ['two', 'stale', 'two']),
-    )
-    expect(groups[0]!.sessions.map(session => session.id)).toEqual([
-      sid('two'), sid('new'), sid('one'),
-    ])
-  })
-
-  it('shows only the current blank session in its Workspace count and tree', () => {
-    const currentBlank = { ...summary('current-blank', 5), blank: true, retainedBy: { mainView: 1 } }
-    const staleBlank = { ...summary('stale-blank', 4), blank: true }
-    const real = summary('shown', 3)
-    const sessions = list(real, currentBlank, staleBlank)
-    const groups = deriveGroups(
-      sessions, [workspace('first', ['shown', 'current-blank', 'stale-blank'])],
-      noRows, noAttention, view(['first']),
-    )
-    expect(groups[0]!.sessions.map(session => session.id)).toEqual([currentBlank.id, real.id])
-    const blankNode = groups[0]!.sessions.find(session => session.id === currentBlank.id)!
-    // The stored placeholder title stays canonical; the renderer swaps in
-    // the localized New Session label via the blank flag.
-    expect(blankNode.title).toBe('')
-    expect(blankNode.blank).toBe(true)
-    expect(groups[0]!.sessions.find(session => session.id === real.id)!.blank).toBe(false)
-    expect(groups[0]!.sessionCount).toBe(2)
-    // A non-current blank stray never surfaces an Ungrouped bucket either.
-    const strayGroups = deriveGroups(
-      list({ ...summary('stray', 2), blank: true }),
-      [workspace('first', [])], noRows, noAttention, view(),
-    )
-    expect(strayGroups.map(group => group.key)).toEqual(['first'])
+    // Settings offers these to file under Global; the sidebar shows only the
+    // Sessions a Workspace accounts for.
+    expect(groups.map(group => group.key)).toEqual(['first'])
+    expect(groups[0]!.sessions.map(session => session.id)).toEqual([sid('owned')])
   })
 
   it('matches titles fuzzily and orders local results by match, then recency', () => {
@@ -463,37 +426,6 @@ describe('deriveGroups', () => {
     expect(counts(statuses)).toEqual([0, 0, 0])
   })
 
-  it('ignores fork lineage and sorts every ungrouped session as a top-level row', () => {
-    const parent = summary('parent', 1)
-    const oldChild = { ...summary('old-child', 10), parentId: parent.id }
-    const newChild = { ...summary('new-child', 20), parentId: parent.id }
-    const tieB = { ...summary('tie-b', 20), parentId: parent.id }
-    const tieA = { ...summary('tie-a', 20), parentId: parent.id }
-    const self = { ...summary('self', 2), parentId: sid('self') }
-    const orphan = { ...summary('orphan', 3), parentId: sid('missing') }
-    const cycleA = { ...summary('cycle-a', 4), parentId: sid('cycle-b') }
-    const cycleB = { ...summary('cycle-b', 5), parentId: sid('cycle-a') }
-    const groups = deriveGroups(
-      list(parent, oldChild, newChild, tieB, tieA, self, orphan, cycleA, cycleB),
-      [],
-      noRows,
-      noAttention,
-      { expandedGroups: [UNGROUPED_KEY] },
-    )
-
-    expect(groups).toHaveLength(1)
-    expect(groups[0]!.sessions.map(node => node.id)).toEqual([
-      newChild.id, tieA.id, tieB.id, oldChild.id,
-      cycleB.id, cycleA.id, orphan.id, self.id, parent.id,
-    ])
-
-    // Equal timestamps use ids as a deterministic tiebreak in either input order.
-    expect(deriveGroups(
-      list(summary('tie-a', 1), summary('tie-b', 1)), [], noRows, noAttention, view([UNGROUPED_KEY]),
-    )[0]!
-      .sessions.map(node => node.id)).toEqual([sid('tie-a'), sid('tie-b')])
-  })
-
   it('tolerates Workspace membership arriving before its Session summary', () => {
     const partial: SessionListState = {
       ...list(),
@@ -576,7 +508,7 @@ describe('deriveGroups', () => {
     ])
   })
 
-  it('marks selected Workspace and Ungrouped sessions without relying on an Intent', () => {
+  it('marks the selected Workspace session without relying on an Intent', () => {
     const owned = summary('owned', 1)
     const loose = summary('loose', 2)
     const ws = workspace('project', ['owned'])
@@ -584,10 +516,12 @@ describe('deriveGroups', () => {
       withMain(list(owned, loose), owned.id), [ws], noRows, noAttention, view(),
     )
     expect(ownedGroups.find(group => group.key === 'project')!.containsCurrent).toBe(true)
+    // A selected Session that no Workspace accounts for marks no group: the
+    // sidebar has no bucket to highlight.
     const looseGroups = deriveGroups(
       withMain(list(owned, loose), loose.id), [ws], noRows, noAttention, view(),
     )
-    expect(looseGroups.find(group => group.key === UNGROUPED_KEY)!.containsCurrent).toBe(true)
+    expect(looseGroups.some(group => group.containsCurrent)).toBe(false)
   })
 })
 

@@ -10,6 +10,7 @@ import { DirectoryPickerController } from './directory-picker.ts'
 import { WorkspaceFeed, workspaceView } from './feed.ts'
 import { defaultWorkspaceDirectory, validateDocumentsDirectory } from './default-directory.ts'
 import type {
+  WorkspaceAdoptSessionRequest,
   WorkspaceArchiveSessionRequest,
   WorkspaceArchiveValue,
   WorkspaceBaseline,
@@ -174,6 +175,16 @@ export class WorkspaceController extends TypertRemoteService {
   @Remote('archiveSession')
   archiveSession(request: WorkspaceArchiveSessionRequest): Promise<WorkspaceArchiveValue> {
     return this.commands.archiveSession(request)
+  }
+
+  /**
+   * Add one stray Session to the shared project-less Workspace.
+   * @param request - Session identity to adopt.
+   * @returns the Global Workspace projection the Session joined.
+   */
+  @Remote('adoptSession')
+  adoptSession(request: WorkspaceAdoptSessionRequest): Promise<WorkspaceValue> {
+    return this.commands.adoptSession(request)
   }
 
   /**
