@@ -237,15 +237,24 @@ export function apply(ctx: Context, config: SyncedConfig<WorkspaceNavigationConf
   // Registry-global sets as Sets, rebuilt only when the Workspace snapshot changes.
   const pinnedSet = derive(workspaces.list, snapshot => new Set<SessionId>(snapshot.pinnedSessionIds))
   const archivedSet = derive(workspaces.list, snapshot => new Set<SessionId>(snapshot.archivedSessionIds))
+  // `useSyncExternalStore` compares snapshots by identity, so the row list is
+  // built once per pair of source snapshots rather than on every read: a fresh
+  // array per read would re-render forever.
+  let archivedRowsOf: { readonly archived: readonly SessionId[]; readonly byId: unknown } | undefined
+  let archivedRows: readonly ArchivedSessionRow[] = []
   const archivedSessions = {
     getSnapshot: (): readonly ArchivedSessionRow[] => {
-      const archived = workspaces.list.getSnapshot().archivedSessionIds
+      const snapshot = workspaces.list.getSnapshot()
+      const archived = snapshot.archivedSessionIds
       const byId = sessions.list.getSnapshot().byId
-      return archived.map(sessionId => ({
+      if (archivedRowsOf?.archived === archived && archivedRowsOf.byId === byId) return archivedRows
+      archivedRowsOf = { archived, byId }
+      archivedRows = archived.map(sessionId => ({
         sessionId,
         displayTitle: byId[sessionId]?.displayTitle ?? sessionId,
         updatedAt: String(byId[sessionId]?.updatedAt ?? ''),
       }))
+      return archivedRows
     },
     subscribe: (listener: () => void): (() => void) => {
       const stopArchived = workspaces.list.subscribe(listener)

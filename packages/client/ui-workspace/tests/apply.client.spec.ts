@@ -331,6 +331,13 @@ describe('ui-workspace apply', () => {
     expect(b.slots.spec(ROW_ACTION)).toEqual({ kind: 'list', scope: 'root' })
     // Archived Sessions are managed from Settings now that the sidebar hides them.
     expect(b.slots.entries('settings.section').map(entry => entry.options.id)).toContain('archived-sessions')
+    // `useSyncExternalStore` compares by identity: a snapshot rebuilt per read
+    // re-renders the section forever.
+    const section = b.slots.entries('settings.section').find(entry => entry.options.id === 'archived-sessions')!
+    const hooks = (section.inject as () => { hooks: { archivedSessions: {
+      getSnapshot: () => readonly unknown[]
+    } } })().hooks
+    expect(hooks.archivedSessions.getSnapshot()).toBe(hooks.archivedSessions.getSnapshot())
     expect(b.slots.spec('sidebar.session.row.trailing')).toEqual({ kind: 'list', scope: 'root', inline: true })
     expect(b.slots.spec('sidebar.session.row.leading')).toEqual({ kind: 'list', scope: 'root', inline: true })
 
