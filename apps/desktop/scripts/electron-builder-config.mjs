@@ -44,6 +44,29 @@ import {
  * @param {string | undefined} preparedRuntimeVersion - Version that private tree declares, which qualification rewrites away from the product version.
  * @returns {object} electron-builder configuration.
  */
+/**
+ * Product name every bundle identity uses.
+ *
+ * The DEV suffix keeps a locally built application separate from an installed
+ * release: Electron derives its profile directory from this name, so the two
+ * never write the same window or settings state.
+ */
+const PRODUCT_NAME = 'DeepSeek Harness DEV'
+
+/**
+ * Application icon file for one platform target.
+ *
+ * The DEV bundle carries a badged icon so the Dock and the taskbar distinguish a
+ * locally built application from a release at a glance. Rendered by
+ * `scripts/render-dev-icons.ts`; the release artwork stays untouched and is what
+ * the installer and uninstaller keep using.
+ * @param {'darwin' | 'win32'} platform - Platform being packaged.
+ * @returns {string} Absolute icon path.
+ */
+function applicationIcon(platform) {
+  return fileURLToPath(new URL(`../resources/icon-${platform === 'darwin' ? 'macos' : 'windows'}-dev.png`, import.meta.url))
+}
+
 export function createElectronBuilderConfig(
   env = process.env,
   hostPlatform = process.platform,
@@ -108,7 +131,7 @@ export function createElectronBuilderConfig(
   const packaged = resolveDesktopBuildCommit(env)
   return {
     appId,
-    protocols: [{ name: 'DeepSeek Harness', schemes: ['dsh'] }],
+    protocols: [{ name: PRODUCT_NAME, schemes: ['dsh'] }],
     extraMetadata: {
       dshDesktopAppId: appId,
       dshDesktopUpdateChannel: update?.channel ?? 'nightly',
@@ -116,7 +139,7 @@ export function createElectronBuilderConfig(
       ...buildVersion === productVersion ? {} : { version: buildVersion },
       ...packaged === undefined ? {} : { dshBuildCommit: packaged.commit, dshBuildDirty: packaged.dirty },
     },
-    productName: 'DeepSeek Harness',
+    productName: PRODUCT_NAME,
     // The default copyright uses author.name; this line names the product instead.
     copyright: `Copyright © ${new Date().getFullYear()} \${productName}`,
     // Unsigned builds carry their own suffix so a shared file can never pass for a release artifact.
@@ -164,7 +187,7 @@ export function createElectronBuilderConfig(
       ...(packagesWindows ? [{ from: fileURLToPath(new URL('../resources/tray-windows.ico', import.meta.url)), to: 'tray.ico' }] : []),
     ],
     mac: {
-      icon: fileURLToPath(new URL('../resources/icon-macos.png', import.meta.url)),
+      icon: applicationIcon('darwin'),
       category: 'public.app-category.developer-tools',
       // macOS matches the application locale against this bundle, not Electron Framework resources.
       extendInfo: {
@@ -245,7 +268,7 @@ export function createElectronBuilderConfig(
       )
     },
     win: {
-      icon: fileURLToPath(new URL('../resources/icon-windows.png', import.meta.url)),
+      icon: applicationIcon('win32'),
       forceCodeSigning: !unsigned,
       signtoolOptions: {
         sign: windowsSigner,
